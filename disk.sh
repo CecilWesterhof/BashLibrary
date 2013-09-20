@@ -10,7 +10,39 @@
 # Functions                                                                    #
 ################################################################################
 
+# Usage: changedToday [--short] <FILE-EXPRESSION>
+# I sometimes want to know which files has changed ‘today’.
+# (With today I mean the last 24 hours.)
+# This function show the files that match the given regex. (Think about shell expansion.)
+# Default ls -l is used. If you want ls give the --short parameter.
+# Needed:
+# - BASH functions
+#  - fatal
+function changedToday {
+  declare command=$(which ls)
+  declare findExpr
+
+  if [[ ${#} -ge 1 ]] && [[ ${1} == '--short' ]]; then
+    shift
+  else
+    command+=" -l"
+  fi
+  if [[ ${#} -ge 1 ]] ; then
+    findExpr=${1}; shift
+  else
+    findExpr='*'
+  fi
+  if [[ ${#} -ge 1 ]] ; then
+    fatal "${FUNCNAME} [--short] <FILE-EXPRESSION>"
+    return
+  fi
+
+  ${command} $(eval find . -maxdepth 1 -mindepth 1 -mtime -1 -type f -name \'${findExpr}\')
+}
+
 # Usage: diskUsage [-G|-K|-M] <DIRECTORY>
+# Shows the diskusage of <DIRECTORY>.
+# Default in GB, but can also be done in KB and MB.
 # Needed:
 # - BASH functions
 #  - fatal
@@ -44,6 +76,7 @@ function diskUsage {
 }
 
 # Usage: doUnzip
+# Unzip all zip-archives in the current directory, that contain newer files.
 # Needed:
 # - BASH functions
 #  - fatal
@@ -60,6 +93,7 @@ function doUnzip {
 }
 
 # Usage: isReadableFile <FILENAME>
+# Is <FILENAME> readable
 # Needed:
 # - BASH functions
 #  - fatal
@@ -73,6 +107,7 @@ function isReadableFile {
 }
 
 # removeSpacesFromFileNames
+# In the current directory change all spaces in filenames to underscores.
 # Needed:
 # - BASH functions
 #  - fatal
@@ -90,6 +125,7 @@ function removeSpacesFromFileNames {
 }
 
 # Usage: removeSpecialCharsFromFileName
+# In the current directory remove ‘all’ special characters from filenames
 # Needed:
 # - BASH functions
 #  - fatal
@@ -111,6 +147,8 @@ function removeSpecialCharsFromFileName {
 }
 
 # Usage: sizeOfFolder [-G|-K|-M] [FOLDER]
+# Shows the diskusage of all the folders in <DIRECTORY>.
+# Sorted with smallest first.
 # Needed:
 # - BASH functions
 #  - fatal

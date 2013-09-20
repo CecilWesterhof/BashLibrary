@@ -46,6 +46,7 @@ popd   1>/dev/null
 ################################################################################
 
 # Usage: calc <EXPRESSION>
+# Gives an expression to be evaluated to bc
 # Needed:
 # - BASH functions
 #  - fatal
@@ -56,6 +57,25 @@ function calc {
   fi
 
   printf "${@}\n" | bc
+}
+
+# Usage: canRun <LOCK-FILE>
+# Often you want to be sure something is only run one time at the time
+# This function tries to get a semaphore and report the status
+# Needed:
+# - BASH functions
+#  - fatal
+function canRun {
+  declare LOCK_FILE
+
+  if [[ ${#} -ne 1 ]] ; then
+    fatal "${FUNCNAME} <LOCK-FILE>"
+    return
+  fi
+  LOCK_FILE=${1}; shift
+
+  (set -o noclobber; :>${LOCK_FILE}) &>/dev/null || return 1
+  return 0
 }
 
 # Usage:   chall [-R] mode own:group <file/dir>
@@ -88,7 +108,10 @@ Example: ${FUNCNAME} -R a=rx root:sys /usr/data"
 }
 
 # Usage: cdll <DIRECTORY>
-# Needed: Nothing
+# cd and ls -l combined
+# Needed:
+# - BASH functions
+#  - fatal
 function cdll {
     if [[ ${#} -ne 1 ]] ; then
         fatal "${FUNCNAME} <DIRECTORY>"
@@ -100,6 +123,7 @@ function cdll {
 }
 
 # Usage: commandExists: commandExists <COMMAND_TO_CHECK>
+# Checks if a command exist
 # Needed:
 # - BASH functions
 #  - fatal
@@ -114,6 +138,7 @@ function commandExists {
 }
 
 # Usage: defaultPS_OPTIONS
+# Sets PS_OPTIONS to its default value
 # Needed:
 # - BASH functions
 #   - fatal
@@ -127,6 +152,7 @@ function defaultPS_OPTIONS {
 }
 
 # Usage: elementInList <ELEMENT> <LIST OF ELEMENTS>
+# Checks if element is contained in the list
 # Needed:
 # - BASH functions
 #  - fatal
@@ -149,7 +175,10 @@ function elementInList {
     return 1
 }
 
-# Needed
+# Usage: fatal [<tag> [<message]]
+# Used when something has gone fatally wrong. Gives a tagged message and stacktrace.
+# When in a script: exit the script. When interactive just return.
+# Needed:
 # - BASH functions:
 #   - stackTrace
 #   - taggedMsg
@@ -167,7 +196,9 @@ function fatal {
 }
 
 # Usage: filterCommand [--field FIELD_NO] <COMMAND> <FILTER>
-# Needed
+# Filter the output from <COMMAND> on <Filter>. When given a field,
+# only filter on that field.
+# Needed:
 # - BASH function
 #   - fatal
 function filterCommand {
@@ -200,6 +231,7 @@ function filterCommand {
 }
 
 # Usage: getIPs [--only-first]
+# Get the ip-addresses of your system. With --only-first, only the first address.
 # Needed
 # - BASH function
 #   - fatal
@@ -222,6 +254,7 @@ function getIPs {
 }
 
 # Usage: getOptionValue <OPTION>
+# Get the value of option <OPTION>
 # Needed
 # - BASH function
 #   - fatal
@@ -238,6 +271,7 @@ function getOptionValue {
 }
 
 # Usage: isInteractive
+# Interactive shell or not?
 # Needed:
 # - BASH function
 #   - fatal
@@ -255,6 +289,7 @@ function isInteractive {
 }
 
 # Usage: isVarSet <VARIABLE-NAME>
+# Check if a variable is set.
 # Needed
 # - BASH function
 #   - fatal
@@ -269,6 +304,7 @@ function isVarSet {
 }
 
 # Usage: psCommand <COMMAND>
+# Get information about running commands that contain <COMMAND>.
 # Needed
 # - BASH function
 #   - fatal
@@ -288,6 +324,7 @@ function psCommand {
 }
 
 # Usage: psGrep <SEARCH_STRING>
+# Filter ps with <SEARCH_STRING>
 # Needed
 # - BASH function
 #   - fatal
@@ -307,6 +344,7 @@ function psGrep {
 }
 
 # Usage statusCode [<STATUS_CODE>]
+# Filter ps on a status code. Default ‘D’ (uninterruptible sleep).
 # Needed
 # - BASH function
 #   - fatal
@@ -330,6 +368,7 @@ function psStatus {
 }
 
 # Usage: psUser <USER>
+# Filter ps on users containing <USER>.
 # Needed
 # - BASH function
 #   - fatal
@@ -349,6 +388,7 @@ function psUser {
 }
 
 # Usage: screent <USER>
+# Starts a screen session as <USER>. Also sets the title.
 # Needed
 # - BASH variables
 #   - STACK_TRACE_DEPTH
@@ -367,6 +407,7 @@ function screent {
 }
 
 # Usage: stackTrace [<DEPTH>]
+# Generates a stacktrace. Strart at <DEPTH> if given, otherwise at the top.
 # Needed
 # - BASH variables
 #   - STACK_TRACE_DEPTH
@@ -403,6 +444,7 @@ function stackTrace {
 }
 
 # Usage: stripLeadingZeros <STRING_TO_STRIP>
+# Strip leading zeros of a string, but leave it otherwise intact.
 # Needed
 # - BASH function
 #   - fatal
@@ -429,6 +471,11 @@ function stripLeadingZeros {
 }
 
 # Usage: taggedMsg [<TAG> [<MESSAGE>]]
+# Used to give a debug message.
+# With no parameters it just shows an untagged message.
+# You can give a tag to define the type of message and a message to show.
+# It shows the filename with linenummer and function name from which it is called.
+# Not very useful interactive.
 # Needed: nothing
 function taggedMsg {
     declare -r OLD_IFS=${IFS}
@@ -462,6 +509,7 @@ function taggedMsg {
 # initialisation                                                               #
 ################################################################################
 
+# Only set variables if they are not already set.
 if ! isVarSet PS_OPTIONS ; then
     defaultPS_OPTIONS
     export PS_OPTIONS
@@ -475,7 +523,13 @@ fi
 
 case ${-} in
     *i*) # do things for interactive shell
-       # define +=, -= and ==
+         # define +=, -= and ==
+
+        # Usage: += [<DIRECTORY>]
+        # Does a pushd for the given directory. Default current.
+        # Needed
+        # - BASH function
+        #   - fatal
         function += {
             if [[ ${#} -gt 1 ]] ; then
                 fatal "${FUNCNAME} [<DIRECTORY>]"
@@ -489,7 +543,16 @@ case ${-} in
             fi
         }
 
+        # Usage: -=
+        # Does a popd if the directory stack is not empty.
+        # Needed
+        # - BASH function
+        #   - fatal
         function -= {
+            if [[ ${#} -ne 0 ]] ; then
+                fatal "${FUNCNAME} does not take parameters"
+                return
+            fi
             if [[ ${#DIRSTACK[@]} -le 1 ]] ; then
                 fatal "Directory stack is empty"
                 return
@@ -498,6 +561,11 @@ case ${-} in
             popd
         }
 
+        # Usage: ==
+        # Shows the directory stack.
+        # Needed
+        # - BASH function
+        #   - fatal
         function == {
             if [[ ${#} -ne 0 ]] ; then
                 fatal "${FUNCNAME} does not take parameters"
