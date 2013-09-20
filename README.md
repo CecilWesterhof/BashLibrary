@@ -17,6 +17,7 @@ The files contain the following functions:
 
 In BASHInitialisation.sh:
 - calc
+- canRun
 - chall
 - cdll
 - commandExists
@@ -38,6 +39,7 @@ In BASHInitialisation.sh:
 - taggedMsg
 
 In disk.sh:
+- changedLastDay
 - diskUsage
 - doUnzip
 - isReadableFile
