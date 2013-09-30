@@ -1,7 +1,11 @@
 BashLibrary
 ===========
 
-A library with useful Bash functions
+A BASH library with useful functions
+Copyright:
+  2013 by Cecil Westerhof
+Contact:
+  bash@decebal.nl
 
 There is a LinkedIn group where this library is discussed:
     http://tinyurl.com/BASHScripting
@@ -20,8 +24,10 @@ In BASHInitialisation.sh:
 - canRun
 - chall
 - cdll
+- checkReadOnlyVariables
 - commandExists
-- defaultPS_OPTIONS
+- convertInput
+- default_PS_OPTIONS
 - elementInList
 - fatal
 - filterCommand
@@ -37,11 +43,17 @@ In BASHInitialisation.sh:
 - stackTrace
 - stripLeadingZeros
 - taggedMsg
+- valueInArray
+- variableExist
 
 In disk.sh:
-- changedLastDay
+- changedToday
+- diskFree
 - diskUsage
 - doUnzip
+- getDirTree
+- getFunctionsFromFile
+- includeFile
 - isReadableFile
 - removeSpacesFromFileNames
 - removeSpecialCharsFromFileName

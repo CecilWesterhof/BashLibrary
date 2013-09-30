@@ -1,7 +1,11 @@
 # Functions:
+# - calc
+# - canRun
 # - chall
 # - cdll
+# - checkReadOnlyVariables
 # - commandExists
+# - convertInput
 # - default_PS_OPTIONS
 # - elementInList
 # - fatal
@@ -18,6 +22,8 @@
 # - stackTrace
 # - stripLeadingZeros
 # - taggedMsg
+# - valueInArray
+# - variableExist
 
 # Variables:
 # - STACK_TRACE_DEPTH
@@ -122,6 +128,41 @@ function cdll {
     ls -l
 }
 
+# Usage: checkReadOnlyVariables <VARS_TO_CHECK>
+# Checks if at least one of the given variables is read only
+# Needed:
+# - BASH functions
+#  - fatal
+function checkReadOnlyVariables {
+    if [[ "$#" -ne "1" ]] ; then
+        fatal "${FUNCNAME} <VARS_TO_CHECK>"
+        return
+    fi
+    declare -r VARS_TO_CHECK=${1}; shift
+
+    readonly | awk -v variableNames=${VARS_TO_CHECK} '
+        BEGIN {
+            returnCode = 0;
+            split(variableNames, variableArray, "#");
+        }
+
+        END {
+            exit returnCode
+        }
+
+        {
+            for(i in variableArray) {
+                variableName = variableArray[i];
+                temp = "^" variableName "=";
+                if( match($3, temp ) ) {
+                    print "ERROR: " variableName " defined as read only"
+                    returnCode = 1;
+                }
+            }
+        }
+  '
+}
+
 # Usage: commandExists: commandExists <COMMAND_TO_CHECK>
 # Checks if a command exist
 # Needed:
@@ -135,6 +176,26 @@ function commandExists {
     declare -r COMMAND_TO_CHECK=${1}; shift
 
     type "${COMMAND_TO_CHECK}" &> /dev/null
+}
+
+# Usage: convertInput <INPUT_TO_CONVER>
+# Sometimes you have to compare an input to certain values.
+# But for example you want YES, Yes and yes have the same meaning.
+# This function removes leading and tailing whitespace
+# and converts the rest to lowercase.
+# Needed: nothing
+function convertInput {
+    local converted
+
+    if [[ ${#} -ne 1 ]] ; then
+        fatal "${FUNCNAME} <COMMAND_TO_CHECK>"
+        return
+    fi
+
+    read converted <<EOT
+${1,,}
+EOT
+    printf "${converted}\n"
 }
 
 # Usage: defaultPS_OPTIONS
@@ -505,6 +566,71 @@ function taggedMsg {
     IFS=${OLD_IFS}
 }
 
+# Usage: valueInArray <value> <array-values>
+# Example: valueInArray 12 ${thisArray[*]}
+# Checks if <value> is contained in <array-values>
+# Needed
+# - BASH function
+#   - fatal
+function valueInArray {
+  declare ARRAY
+  declare thisValue
+  declare VALUE
+
+  if [[ ${#} -lt 1 ]] ; then
+    fatal "${FUNCNAME} <value> <array-values>"
+    return
+  fi
+  VALUE=${1}; shift
+  ARRAY=( "$@" )
+
+  for thisValue in ${ARRAY[@]}; do
+    if [[ ${thisValue} == ${VALUE} ]] ; then
+      printf "true\n"
+      return
+    fi
+  done
+  printf "false\n"
+}
+
+# Usage: variableExist [--non-fatal] <VARIABLE_NAME>
+# Checks if a variable is defined
+# If --non-fatal not defined of variable is not fatal
+# Needed
+# - BASH function
+#   - fatal
+function variableExist {
+  declare callAr
+  declare error
+  declare function
+  declare IS_FATAL
+  declare VAR_NAME
+
+
+  if [[ ${#} -ge 1 ]] && [[ ${1} == '--non-fatal' ]]; then
+    IS_FATAL="false"; shift
+  else
+    IS_FATAL="true"
+  fi
+  if [[ ${#} -ne 1 ]] ; then
+    fatal "${FUNCNAME} [--non-fatal] <VARIABLE_NAME>"
+    return
+  fi
+  VAR_NAME=${1}; shift
+
+  error=$((set -u; : $(eval echo '${'"${VAR_NAME}"'}')) 2>&1)
+  if [[ ${error} == '' ]]; then
+    return 0
+  fi
+  if [[ ${IS_FATAL} -ne "false" ]]; then
+    callAr=($(caller 0))
+    function=${callAr[1]}
+    fatal "${function} needs ${VAR_NAME} to be defined"
+    return
+  fi
+  return 1
+}
+
 ################################################################################
 # initialisation                                                               #
 ################################################################################
@@ -576,3 +702,5 @@ case ${-} in
         }
         ;;
 esac
+
+includeFile --notNeeded BASHExtra.sh
