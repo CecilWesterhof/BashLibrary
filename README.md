@@ -35,6 +35,9 @@ In BASHInitialisation.sh:
 - getOptionValue
 - isInteractive
 - isVarSet
+- logDRY
+- logError
+- logMsg
 - psCommand
 - psGrep
 - psStatus

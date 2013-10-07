@@ -40,12 +40,11 @@
 ################################################################################
 # Includes                                                                     #
 ################################################################################
-pushd  /usr/local/bash 1>/dev/null
-source disk.sh
-source random.sh
-source systemd.sh
-source time.sh
-popd   1>/dev/null
+includeDir=/usr/local/bash
+source ${includeDir}/disk.sh
+source ${includeDir}/random.sh
+source ${includeDir}/systemd.sh
+source ${includeDir}/time.sh
 
 ################################################################################
 # Functions                                                                    #
@@ -364,6 +363,55 @@ function isVarSet {
     return
 }
 
+# This function should never be called directly.
+# It is an internal function which is called by logError and logMsg.
+# logError logs to stderr and logMsg to stdout
+# Prints a message prepended with the following information:
+# - Date and time
+# - Filename with line number
+# - Function from which it is called
+# When the first parameter is --simple only date and time are prepended
+function logDRY {
+    if [[ ${#} -ge 1 ]] && [[ ${1} == "--simple" ]] ; then
+        declare -r SIMPLE="true"; shift
+    else
+        declare -r SIMPLE="false"
+    fi
+    declare message="${@}"
+
+    if [[ ${SIMPLE} == "true" ]] ; then
+        printf "$(date +%F_%T): ${message}\n"
+    else
+        callAr=($(caller 1))
+        lineNo=${callAr[0]}
+        fnName=${callAr[1]}
+        fileName=${callAr[2]}
+        printf "$(date +%F_%T):${fileName}(${lineNo}):${fnName}: ${message}\n"
+    fi
+}
+
+# Log to stderr, see logDRY
+function logError {
+    if [[ ${#} -ge 1 ]] && [[ ${1} == "--simpel" ]] ; then
+        declare -r PARAMS="--simpel"; shift
+    else
+        declare -r PARAMS=""
+    fi
+
+    logDRY ${PARAMS} "${@}" >&2
+}
+
+# Log to stdout, see logDRY
+function logMsg {
+    if [[ ${#} -ge 1 ]] && [[ ${1} == "--simpel" ]] ; then
+        declare -r PARAMS="--simpel"; shift
+    else
+        declare -r PARAMS=""
+    fi
+
+    logDRY ${PARAMS} "${@}"
+}
+
 # Usage: psCommand <COMMAND>
 # Get information about running commands that contain <COMMAND>.
 # Needed
@@ -451,8 +499,6 @@ function psUser {
 # Usage: screent <USER>
 # Starts a screen session as <USER>. Also sets the title.
 # Needed
-# - BASH variables
-#   - STACK_TRACE_DEPTH
 # - External programs
 #   screen
 function screent {
@@ -703,4 +749,5 @@ case ${-} in
         ;;
 esac
 
-includeFile --notNeeded BASHExtra.sh
+includeFile --notNeeded ${includeDir}/BASHExtra.sh
+unset includeDir

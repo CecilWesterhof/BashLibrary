@@ -9,23 +9,31 @@
 # Functions                                                                    #
 ################################################################################
 
-# Usage: getRandom [--secure]
+# Usage: getRandom [--secure|--simple]
 # Needed : Nothing
 function getRandom {
     declare inputFile=/dev/urandom
 
-    if [[ ${#} -ge 1 ]] && [[ ${1} == "--secure" ]] ; then
-        inputFile=/dev/random; shift
+    if [[ ${#} -ge 1 ]] ; then
+        case ${1} in
+            "--secure")
+                inputFile=/dev/random; shift
+                ;;
+            "--simple")
+                printf "%d\n" ${RANDOM}
+                return
+                ;;
+        esac
     fi
     if [[ ${#} -ne 0 ]] ; then
-        fatal "${FUNCNAME} [--secure]"
+        fatal "${FUNCNAME} [--secure|--simple]"
         return 1
     fi
 
     od --read-bytes=4 -t u4 ${inputFile} | awk '/^0000000 / { print $2 }'
 }
 
-# Usage: getRandomInRange [--secure] <MIN_VALUE> <MAX_VALUE>
+# Usage: getRandomInRange [--secure|--simple] <MIN_VALUE> <MAX_VALUE>
 # Needed
 # - BASH functions:
 #   - getRandom
@@ -35,11 +43,15 @@ function getRandomInRange {
     declare -i modulo
     declare    params=""
 
-    if [[ ${#} -ge 1 ]] && [[ ${1} == "--secure" ]] ; then
-        params="--secure"; shift
+    if [[ ${#} -ge 1 ]] ; then
+        case ${1} in
+            "--secure" | "--simple")
+                params=${1}; shift
+                ;;
+        esac
     fi
     if [[ ${#} -ne 2 ]] ; then
-        fatal "${FUNCNAME} [--secure] <MIN_VALUE> <MAX_VALUE>"
+        fatal "${FUNCNAME} [--secure|--simple] <MIN_VALUE> <MAX_VALUE>"
         return 1
     fi
     minValue=${1}; shift
