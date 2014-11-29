@@ -1,9 +1,10 @@
 BashLibrary
 ===========
 
-A BASH library with useful functions
+A BASH library with useful functions.
+There is also a bin directory with useful scripts.
 Copyright:
-  2013 by Cecil Westerhof
+  2013 - 2014 by Cecil Westerhof
 Contact:
   bash@decebal.nl
 
@@ -72,3 +73,6 @@ In systemd.sh:
 
 In time.sh:
 - showJournalctl
+
+The bin directory contains:
+- swapUsage.sh
