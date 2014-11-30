@@ -30,9 +30,12 @@ set -o nounset
 
 # Always define all used variables
 # I use uppercase for readonly variables
+declare -r DIVIDER="========================================"
+declare -r SCRIPTNAME="${0##*/}"
 # These are set in the script itself. So no -r and a readonly in the script.
 declare    GET_COMMAND
 declare    NOTHING_FOUND
+declare    PROGNAME=""
 declare    REPORT_COMMAND
 
 # Holds all processes that need to be reported
@@ -62,17 +65,42 @@ function getSwap {
     # Adds process that uses swap
     if [[ ${swap} -gt 0 ]] ; then
         progname=$(getStatusValue "^Name:")
-        allValues+=("${swap}:${pid}:${progname}")
-        if [[ ${#swap} -gt ${swapLen} ]] ; then
-            swapLen=${#swap}
+        if [[ "${PROGNAME}" == "" ]] || [[ "${PROGNAME}" == "${progname}" ]] ; then
+            allValues+=("${swap}:${pid}:${progname}")
+            if [[ ${#swap} -gt ${swapLen} ]] ; then
+                swapLen=${#swap}
+            fi
+            if [[ ${#pid} -gt ${pidLen} ]] ; then
+                pidLen=${#pid}
+            fi
+            totalSwap+=${swap}
         fi
-        if [[ ${#pid} -gt ${pidLen} ]] ; then
-            pidLen=${#pid}
-        fi
-        totalSwap+=${swap}
     fi
 }
 
+function reportFooter () {
+    printf "${DIVIDER}\n"
+    printf "Total used swap: ${totalSwap} KB\n"
+    printf "There are ${#allValues[@]} processes using swap\n"
+}
+
+function reportProgramsUsingSwap {
+    declare -r OLD_IFS="${IFS}"
+
+    declare    progname
+    declare    swapRecord
+
+    printf "Programs using swap\n"
+    printf "${DIVIDER}\n"
+    for swapRecord in "${allValues[@]}" ; do
+        IFS=:
+        set -- ${swapRecord}
+        progname="${3}"
+        IFS=${OLD_IFS}
+        printf "${progname}\n"
+    done | sort | uniq
+    reportFooter
+}
 function reportSwap {
     declare -r OLD_IFS="${IFS}"
 
@@ -81,6 +109,10 @@ function reportSwap {
     declare -i swap
     declare    swapRecord
 
+    if [[ "${PROGNAME}" != "" ]] ; then
+        printf "Swap usage for ${PROGNAME}\n"
+        printf "${DIVIDER}\n"
+    fi
     for swapRecord in "${allValues[@]}" ; do
         IFS=:
         set -- ${swapRecord}
@@ -88,18 +120,53 @@ function reportSwap {
         pid="${2}"
         progname="${3}"
         IFS=${OLD_IFS}
-        printf "swapped %${swapLen}d KB by PID=%-${pidLen}d (%s)\n" \
-            "${swap}" "${pid}" "${progname}"
+        if [[ "${PROGNAME}" == "" ]] ; then
+            printf "swapped %${swapLen}d KB by PID=%-${pidLen}d (%s)\n" \
+                "${swap}" "${pid}" "${progname}"
+        else
+            printf "swapped %${swapLen}d KB by PID=%-${pidLen}d\n" \
+                "${swap}" "${pid}"
+        fi
     done | sort --key=2 --numeric-sort
-    printf "========================================\n"
-    printf "Total used swap: ${totalSwap} KB\n"
-    printf "There are ${#allValues[@]} processes using swap\n"
+    reportFooter
 }
 
 # main code
-GET_COMMAND=getSwap
-NOTHING_FOUND="No swap used"
-REPORT_COMMAND=reportSwap
+case "${SCRIPTNAME}" in
+    programsUsingSwap.sh)
+        if [[ "${#}" -ne 0 ]] ; then
+            printf "ERROR: ${SCRIPTNAME} does not take parameters\n"
+            exit 1
+        fi
+        GET_COMMAND=getSwap
+        NOTHING_FOUND="No swap used"
+        REPORT_COMMAND=reportProgramsUsingSwap
+        ;;
+    swapUsage.sh)
+        if [[ "${#}" -ne 0 ]] ; then
+            printf "ERROR: ${SCRIPTNAME} does not take parameters\n"
+            exit 1
+        fi
+        GET_COMMAND=getSwap
+        NOTHING_FOUND="No swap used"
+        REPORT_COMMAND=reportSwap
+        ;;
+    swapUsageProgram.sh)
+        if [[ "${#}" -ne 1 ]] ; then
+            printf "ERROR: ${SCRIPTNAME} <PROGRAM>\n"
+            exit 1
+        fi
+        PROGNAME="${1}" ; shift
+        readonly PROGNAME
+        GET_COMMAND=getSwap
+        NOTHING_FOUND="No swap used with ${PROGNAME}"
+        REPORT_COMMAND=reportSwap
+        ;;
+    *)
+        printf "${SCRIPTNAME} is an illegal name for this script\n"
+        exit 1
+        ;;
+esac
 readonly GET_COMMAND
 readonly NOTHING_FOUND
 readonly REPORT_COMMAND
