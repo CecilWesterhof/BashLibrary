@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+
+# Script to start clojure, both REPL and scripts.
+#
+# To start as REPL just use: clojure
+# If it exists CLOJURE_INIT is used for the inititalisation of the REPL.
+#
+# To start a script use: clojure <SCRIPT> [PARAMETERS]
+#
+# Ideally you should link /usr/local/bin/clojure to this file
+# CLOJURE_JAR is used as the jar to use.
+
+
+# An error should terminate the script
+set -o errexit
+set -o nounset
+
+
+# Always define all used variables
+# I use uppercase for readonly variables
+declare -r CLOJURE_JAR=/usr/local/clojure/clojure.jar
+declare -r CLOJURE_INIT=~/Clojure/repl-startup.clj
+
+
+# main code
+if [[ ${#} -eq 0 ]] ; then
+    # REPL
+    printf "To exit clojure enter:\n"
+    printf "    (System/exit 0)\n"
+    if [ -f "${CLOJURE_INIT}" ] ; then
+        rlwrap java -cp ${CLOJURE_JAR} clojure.main --init ~/Clojure/repl-startup.clj --repl
+    else
+        rlwrap java -cp ${CLOJURE_JAR} clojure.main
+    fi
+else
+    # Script with parameters (if any)
+    rlwrap java -cp ${CLOJURE_JAR} clojure.main ${1} -- "${@}"
+fi
+
+
+# To let Emacs know it is a shell-script
+# -*-sh-*-
