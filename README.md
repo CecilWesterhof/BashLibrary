@@ -1,6 +1,6 @@
 BashLibrary
 ===========
-
+<pre>
 A BASH library with useful functions.
 There is also a bin directory with useful scripts.
 Copyright:
@@ -10,7 +10,7 @@ Contact:
 
 There is a LinkedIn group where this library is discussed:
     http://tinyurl.com/BASHScripting
-
+</pre>
 At the moment the functions are not very well documented. Generating
 some useful functions has a higher priority. Most functions are easy to
 understand, but when there is a function that would benefit greatly from
@@ -75,4 +75,7 @@ In time.sh:
 - showJournalctl
 
 The bin directory contains:
-- swapUsage.sh
+- clojure
+- swapUsage.sh: with links to
+  - programsUsingSwap.sh
+  - swapUsageProgram.sh
