@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 
-# Script that shows all processes that use swap, sorted on usage.
-# It shows the KB swap, PID and name of the command.
-# Overall used swap space and number of processes that use swap space
-# is also displayed.
+# Three scripts in one file:
+# - programsUsingSwap.sh
+# - swapUsage.sh
+# - swapUsageProgram.sh
+# The functionality is defined by the name of the script.
+#
+# Written with the help of:
+#     https://www.kernel.org/doc/Documentation/filesystems/proc.txt.
+# One of the things this describes is /proc/PID/status.
 #
 # At the moment the total swap space is about 90 percent of what ‘free’
 # displays. When someone knows the reason of this difference:
@@ -12,15 +17,27 @@
 # I want to expand this script to show other metrics also. Let me know
 # if you want certain metrics. (bash@decebal.nl)
 #
-# Written with the help of:
-#     https://www.kernel.org/doc/Documentation/filesystems/proc.txt.
-# One of the things this describes is /proc/PID/status.
-# I always wanted to know which processes used swap and with this info
-# I could write this script.
 #
-# I work with GET_COMMAND, NOTHING_FOUND and REPORT_COMMAND because in
-# the future I want to use this script for other information also.
-# The functionality will then be defined by the name of the script.
+# The different scripts
+#
+# programsUsingSwap:
+# Scripts that shwos all commands that are using swap, sorted on name.
+# Overall used swap space and number of processes that use swap space
+# is also displayed.
+#
+# swapUsage.sh:
+# Script that shows all processes that use swap, sorted on usage.
+# It shows the KB swap, PID and name of the command.
+# Overall used swap space and number of processes that use swap space
+# is also displayed.
+#
+# swapUsageProgram.sh:
+# Script that shows all processes using a certain command that use swap,
+# sorted on usage.
+# It shows the KB swap and PID.
+# Overall used swap space and number of processes that use swap space
+# is also displayed. (Only for processes using the command.)
+#
 
 
 # An error should terminate the script
