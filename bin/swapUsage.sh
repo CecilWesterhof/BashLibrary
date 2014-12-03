@@ -7,7 +7,7 @@
 # The functionality is defined by the name of the script.
 #
 # Written with the help of:
-#     https://www.kernel.org/doc/Documentation/filesystems/proc.txt.
+#     https://www.kernel.org/doc/Documentation/filesystems/proc.txt
 # One of the things this describes is /proc/PID/status.
 #
 # At the moment the total swap space is about 90 percent of what ‘free’
