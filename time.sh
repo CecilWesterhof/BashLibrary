@@ -26,11 +26,7 @@ function getSeconds {
     fi
     while [[ ${#timeString} -gt 0 ]] ; do
         let seconds*=60
-        if [[ ${timeString:0:1} == "0" ]] ; then
-            seconds+=${timeString:1:1}
-        else
-            seconds+=${timeString:0:2}
-        fi
+        seconds+=$((10#${timeString:0:2}))
         timeString=${timeString:3}
     done
     printf "${seconds}\n"

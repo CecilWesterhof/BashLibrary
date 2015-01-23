@@ -180,6 +180,7 @@ function getFunctionsFromFile {
 
 # Usage: includeFile [--notNeeded] <INPUT_FILE>
 # To include a file into a script
+# Because it is a function, you cannot use declare for global variables
 # Needed:
 # - BASH functions
 #   - fatal
@@ -217,6 +218,46 @@ function isReadableFile {
     fi
 
     [ -s ${1} -a -f ${1} -a -r ${1} ]
+}
+
+# Usage: localFind [DIRECTORY [OTHER ARGS]]
+# To do a find without descending into directories on other filesystems
+# When there are parameters the first should be the directory to search
+# At the moment the following options of find are not supported:
+#     [-H] [-L] [-P] [-D debugopts] [-Olevel]
+# Needed: nothing
+function localFind {
+    declare directory
+
+    if [[ ${#} -eq 0 ]] ; then
+        find -xdev
+    else
+        directory="${1}"; shift
+        find "${directory}" -xdev "${@}"
+    fi
+}
+
+# pushdCheck [<DIRECTORY>]
+# Do a pushd and check success
+# Needed:
+# - BASH functions
+#   - fatal
+function pushdCheck {
+    declare newDir
+
+    if [[ ${#} -gt 1 ]] ; then
+        fatal "${FUNCNAME} [<DIRECTORY>]"
+        return
+    fi
+    if [[ ${#} -eq 1 ]] ; then
+        newDir="${1}"
+    else
+        newDir=.
+    fi
+    if ! pushd "${newDir}" ; then
+        fatal "${FUNCNAME}: could not pushd ${newDir}"
+        return
+    fi
 }
 
 # removeSpacesFromFileNames

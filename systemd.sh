@@ -8,6 +8,24 @@
 # Functions                                                                    #
 ################################################################################
 
+function checkJournal {
+    local -r USAGE="${FUNCNAME} <REGEX>"
+
+    if [[ ${#} -ne 1 ]] ; then
+        fatal "${USAGE}"
+        return
+    fi
+    journalctl --since="$(date +%F)" | grep "${1}"
+}
+
+function illegalLogin {
+    if [[ ${#} -ne 0 ]] ; then
+        fatal "${FUNCNAME} does not take parameters"
+        return
+    fi
+    checkJournal "FAILED LOGIN"
+}
+
 # Usage: showJournalctl [--pager] [--since <SINCE>] 1 to 10 search strings
 # Needed
 # - BASH functions:

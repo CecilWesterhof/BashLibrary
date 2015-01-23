@@ -3,22 +3,31 @@
 # - canRun
 # - chall
 # - cdll
+# - checkNetworkInterface
 # - checkReadOnlyVariables
 # - commandExists
 # - convertInput
-# - default_PS_OPTIONS
+# - defaultPS_OPTIONS
 # - elementInList
 # - fatal
 # - filterCommand
+# - getCPUTemperature
 # - getIPs
 # - getOptionValue
 # - isInteractive
 # - isVarSet
+# - loadXmodmapExtra
+# - logDRY
+# - logError
+# - logMsg
 # - psCommand
 # - psGrep
+# - psPid
+# - psPpid
 # - psStatus
 # - psUser
 # - screent
+# - showMessage
 # - stackTrace
 # - stripLeadingZeros
 # - taggedMsg
@@ -36,15 +45,6 @@
 # - --extended-grep  -E
 # - --max-count=1    -m 1
 # - --only-matching  -o
-
-################################################################################
-# Includes                                                                     #
-################################################################################
-includeDir=/usr/local/bash
-source ${includeDir}/disk.sh
-source ${includeDir}/random.sh
-source ${includeDir}/systemd.sh
-source ${includeDir}/time.sh
 
 ################################################################################
 # Functions                                                                    #
@@ -123,8 +123,29 @@ function cdll {
         return
     fi
 
-    cd ${1}
+    cd ${1} ; shift
     ls -l
+}
+
+# Usage: checkNetworkInterface [<INTERFACE>]
+# Shows if errors, dropped or overruns of the specified interface
+# are unequal zero
+# When no interface is given, check all interfaces
+# Needed:
+# - BASH functions
+#  - fatal
+function checkNetworkInterface {
+    if [[ "$#" -gt "1" ]] ; then
+        fatal "${FUNCNAME} [<INTERFACE>]"
+        return
+    fi
+    if [[ "$#" -eq "1" ]] ; then
+        declare -r INTERFACE=${1}; shift
+    else
+        declare -r INTERFACE=""
+    fi
+
+    /sbin/ifconfig ${INTERFACE} | grep '\(errors\|dropped\|overruns\):[^0]'
 }
 
 # Usage: checkReadOnlyVariables <VARS_TO_CHECK>
@@ -208,7 +229,7 @@ function defaultPS_OPTIONS {
         return
     fi
 
-  PS_OPTIONS='ax --columns 132 -o user,pid,ppid,start_time,tty,time,stat,args'
+    PS_OPTIONS='ax --columns 200 -o user,pid,ppid,tty,start_time,etime,time,stat,args'
 }
 
 # Usage: elementInList <ELEMENT> <LIST OF ELEMENTS>
@@ -290,6 +311,22 @@ function filterCommand {
   }'
 }
 
+# Usage: getCPUTemperature
+# Get the temperature of the processor
+# Needed:
+# - BASH function
+#   - fatal
+# - External function
+#   - acpi
+function getTemp {
+    if [[ ${#} -ne 0 ]] ; then
+        fatal "${FUNCNAME} does not take parameters"
+        return
+    fi
+
+    acpi -t | awk '{ print $4 }'
+}
+
 # Usage: getIPs [--only-first]
 # Get the ip-addresses of your system. With --only-first, only the first address.
 # Needed
@@ -363,6 +400,26 @@ function isVarSet {
     return
 }
 
+# Usage: loadXmodmapExtra
+# Sets extra xmodmap values
+# Needed:
+# - BASH functions
+#   - fatal
+function loadXmodmapExtra {
+    if [[ ${#} -ne 0 ]] ; then
+        fatal "${FUNCNAME} has no parameters"
+        return
+    fi
+
+    local -r XMODMAP_EXTRA=/usr/local/bash/XModmap.extra
+
+    if isReadableFile ${XMODMAP_EXTRA} ; then
+        xmodmap ${XMODMAP_EXTRA}
+    else
+        printf "The file ${XMODMAP_EXTRA} cannot be read\n"
+    fi
+}
+
 # This function should never be called directly.
 # It is an internal function which is called by logError and logMsg.
 # logError logs to stderr and logMsg to stdout
@@ -384,16 +441,20 @@ function logDRY {
     else
         callAr=($(caller 1))
         lineNo=${callAr[0]}
-        fnName=${callAr[1]}
-        fileName=${callAr[2]}
+        fnName=${callAr[1]-noFunction}
+        fileName=${callAr[2]-noFile}
         printf "$(date +%F_%T):${fileName}(${lineNo}):${fnName}: ${message}\n"
     fi
 }
 
+# Usage: logError [--simple]
 # Log to stderr, see logDRY
+# Needed:
+# - BASH functions
+#   - logDRY
 function logError {
-    if [[ ${#} -ge 1 ]] && [[ ${1} == "--simpel" ]] ; then
-        declare -r PARAMS="--simpel"; shift
+    if [[ ${#} -ge 1 ]] && [[ ${1} == "--simple" ]] ; then
+        declare -r PARAMS="--simple"; shift
     else
         declare -r PARAMS=""
     fi
@@ -401,10 +462,14 @@ function logError {
     logDRY ${PARAMS} "${@}" >&2
 }
 
+# Usage: logMsg [--simple]
 # Log to stdout, see logDRY
+# Needed:
+# - BASH functions
+#   - logDRY
 function logMsg {
-    if [[ ${#} -ge 1 ]] && [[ ${1} == "--simpel" ]] ; then
-        declare -r PARAMS="--simpel"; shift
+    if [[ ${#} -ge 1 ]] && [[ ${1} == "--simple" ]] ; then
+        declare -r PARAMS="--simple"; shift
     else
         declare -r PARAMS=""
     fi
@@ -429,7 +494,7 @@ function psCommand {
     fi
     COMMAND=${1}; shift
 
-    filterCommand --field 8 "ps ${PS_OPTIONS}" "${COMMAND}"
+    filterCommand --field 9 "ps ${PS_OPTIONS}" "${COMMAND}"
 }
 
 # Usage: psGrep <SEARCH_STRING>
@@ -450,6 +515,46 @@ function psGrep {
     SEARCH_STRING=${1}; shift
 
     filterCommand "ps ${PS_OPTIONS}" "[${SEARCH_STRING:0:1}]${SEARCH_STRING:1}"
+}
+
+# Usage: psPid <PID>
+# Filter ps with <PID>
+# Needed
+# - BASH function
+#   - fatal
+#   - filterCommand
+# - BASH variable
+#   - PS_OPTIONS
+function psPid {
+    declare PID
+
+    if [[ ${#} -ne 1 ]]; then
+        fatal "${FUNCNAME} <PID>"
+        return
+    fi
+    PID=${1}; shift
+
+    filterCommand --field 2 "ps ${PS_OPTIONS}" "^${PID}\$"
+}
+
+# Usage: psPpid <PPID>
+# Filter ps with <PPID>
+# Needed
+# - BASH function
+#   - fatal
+#   - filterCommand
+# - BASH variable
+#   - PS_OPTIONS
+function psPpid {
+    declare ppid
+
+    if [[ ${#} -ne 1 ]]; then
+        fatal "${FUNCNAME} <PPID>"
+        return
+    fi
+    ppid=${1}; shift
+
+    filterCommand --field 3 "ps ${PS_OPTIONS}" "^${ppid}\$"
 }
 
 # Usage statusCode [<STATUS_CODE>]
@@ -473,7 +578,7 @@ function psStatus {
         statusCode="D"
     fi
 
-    filterCommand --field 7 "ps ${PS_OPTIONS}" "${statusCode}"
+    filterCommand --field 8 "ps ${PS_OPTIONS}" "${statusCode}"
 }
 
 # Usage: psUser <USER>
@@ -513,6 +618,25 @@ function screent {
     screen -t ${THIS_USER} su - ${THIS_USER}
 }
 
+# Usage: showMessage <SHOW_MESSAGE> <MESSAGE>
+# If SHOW_MESSAGE = y print MESSAGE prepended with current time
+# Needed
+# - BASH functions
+#  - fatal
+function showMessage {
+  if [[ ${#} -ne 2 ]] ; then
+    fatal "${FUNCNAME} <SHOW_MESSAGE> <MESSAGE>"
+    return
+  fi
+
+  local -r SHOW_MESSAGE="${1}"; shift
+  local -r MESSAGE="${1}"; shift
+
+  if [[ ${SHOW_MESSAGE} == y ]] ; then
+    printf "$(date +%T): ${MESSAGE}\n"
+  fi
+}
+
 # Usage: stackTrace [<DEPTH>]
 # Generates a stacktrace. Strart at <DEPTH> if given, otherwise at the top.
 # Needed
@@ -540,8 +664,8 @@ function stackTrace {
     while [[ ${fnName} != "main" && ${depth} -le ${STACK_TRACE_DEPTH} ]]; do
         callAr=($(caller ${depth}))
         lineNo=${callAr[0]}
-        fnName=${callAr[1]}
-        fileName=${callAr[2]}
+        fnName=${callAr[1]-noFunction}
+        fileName=${callAr[2]-noFile}
         if [[ ${fnName} == "" ]]; then
             break;
         fi
@@ -585,7 +709,7 @@ function stripLeadingZeros {
 # Not very useful interactive.
 # Needed: nothing
 function taggedMsg {
-    declare -r OLD_IFS=${IFS}
+    declare -r DCBL_OLD_IFS=${IFS}
 
     declare callAr
     declare fileName
@@ -601,15 +725,15 @@ function taggedMsg {
     message="${@}"
     callAr=($(caller 1))
     lineNo=${callAr[0]}
-    fnName=${callAr[1]}
-    fileName=${callAr[2]}
+    fnName=${callAr[1]-noFunction}
+    fileName=${callAr[2]-noFile}
     printf "${TAG}: ${fileName}:${lineNo} in ${fnName}\n" >&2
     IFS=$'\n'
     set -- ${message}
     while [[ ${#} -ge 1 ]]; do
         printf "\t${1}\n"; shift
     done
-    IFS=${OLD_IFS}
+    IFS=${DCBL_OLD_IFS}
 }
 
 # Usage: valueInArray <value> <array-values>
@@ -668,7 +792,7 @@ function variableExist {
   if [[ ${error} == '' ]]; then
     return 0
   fi
-  if [[ ${IS_FATAL} -ne "false" ]]; then
+  if [[ "${IS_FATAL}" != "false" ]]; then
     callAr=($(caller 0))
     function=${callAr[1]}
     fatal "${function} needs ${VAR_NAME} to be defined"
@@ -676,6 +800,21 @@ function variableExist {
   fi
   return 1
 }
+
+################################################################################
+# Includes                                                                     #
+################################################################################
+includeDir=/usr/local/bash
+source ${includeDir}/disk.sh
+source ${includeDir}/random.sh
+source ${includeDir}/systemd.sh
+source ${includeDir}/time.sh
+includeFile --notNeeded ${includeDir}/BASHExtra.sh
+# includes for interactive shell
+if isInteractive ; then
+    includeFile --notNeeded ${includeDir}/alias
+fi
+unset includeDir
 
 ################################################################################
 # initialisation                                                               #
@@ -693,61 +832,56 @@ if  ! isVarSet STACK_TRACE_DEPTH  ; then
     export STACK_TRACE_DEPTH
 fi
 
-case ${-} in
-    *i*) # do things for interactive shell
-         # define +=, -= and ==
+# do things for interactive shell
+# define +=, -= and ==
+if isInteractive ; then
+    # Usage: += [<DIRECTORY>]
+    # Does a pushd for the given directory. Default current.
+    # Needed
+    # - BASH function
+    #   - fatal
+    function += {
+        if [[ ${#} -gt 1 ]] ; then
+            fatal "${FUNCNAME} [<DIRECTORY>]"
+            return
+        fi
 
-        # Usage: += [<DIRECTORY>]
-        # Does a pushd for the given directory. Default current.
-        # Needed
-        # - BASH function
-        #   - fatal
-        function += {
-            if [[ ${#} -gt 1 ]] ; then
-                fatal "${FUNCNAME} [<DIRECTORY>]"
-                return
-            fi
+        if [[ ${#} -eq 1 ]] ; then
+            pushd ${1} ; shift
+        else
+            pushd .
+        fi
+    }
 
-            if [[ ${#} -eq 1 ]] ; then
-                pushd ${1}
-            else
-                pushd .
-            fi
-        }
+    # Usage: -=
+    # Does a popd if the directory stack is not empty.
+    # Needed
+    # - BASH function
+    #   - fatal
+    function -= {
+        if [[ ${#} -ne 0 ]] ; then
+            fatal "${FUNCNAME} does not take parameters"
+            return
+        fi
+        if [[ ${#DIRSTACK[@]} -le 1 ]] ; then
+            fatal "Directory stack is empty"
+            return
+        fi
 
-        # Usage: -=
-        # Does a popd if the directory stack is not empty.
-        # Needed
-        # - BASH function
-        #   - fatal
-        function -= {
-            if [[ ${#} -ne 0 ]] ; then
-                fatal "${FUNCNAME} does not take parameters"
-                return
-            fi
-            if [[ ${#DIRSTACK[@]} -le 1 ]] ; then
-                fatal "Directory stack is empty"
-                return
-            fi
+        popd
+    }
 
-            popd
-        }
+    # Usage: ==
+    # Shows the directory stack.
+    # Needed
+    # - BASH function
+    #   - fatal
+    function == {
+        if [[ ${#} -ne 0 ]] ; then
+            fatal "${FUNCNAME} does not take parameters"
+            return
+        fi
 
-        # Usage: ==
-        # Shows the directory stack.
-        # Needed
-        # - BASH function
-        #   - fatal
-        function == {
-            if [[ ${#} -ne 0 ]] ; then
-                fatal "${FUNCNAME} does not take parameters"
-                return
-            fi
-
-            dirs
-        }
-        ;;
-esac
-
-includeFile --notNeeded ${includeDir}/BASHExtra.sh
-unset includeDir
+        dirs
+    }
+fi

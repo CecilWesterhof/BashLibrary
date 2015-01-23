@@ -25,6 +25,7 @@ In BASHInitialisation.sh:
 - canRun
 - chall
 - cdll
+- checkNetworkInterface
 - checkReadOnlyVariables
 - commandExists
 - convertInput
@@ -32,23 +33,32 @@ In BASHInitialisation.sh:
 - elementInList
 - fatal
 - filterCommand
+- getCPUTemperature
 - getIPs
 - getOptionValue
 - isInteractive
 - isVarSet
+- loadXmodmapExtra
 - logDRY
 - logError
 - logMsg
 - psCommand
 - psGrep
+- psPid
+- psPpid
 - psStatus
 - psUser
 - screent
+- showMessage
 - stackTrace
 - stripLeadingZeros
 - taggedMsg
 - valueInArray
 - variableExist
+In interactive mode also:
+- +=
+- -=
+- ==
 
 In disk.sh:
 - changedToday
@@ -59,6 +69,8 @@ In disk.sh:
 - getFunctionsFromFile
 - includeFile
 - isReadableFile
+- localFind
+- pushdCheck
 - removeSpacesFromFileNames
 - removeSpecialCharsFromFileName
 - sizeOfFolder
@@ -69,10 +81,12 @@ In random.sh:
 - getUUID
 
 In systemd.sh:
+- checkJournal
+- illegalLogin
 - showJournalctl
 
 In time.sh:
-- showJournalctl
+- getSeconds
 
 The bin directory contains:
 - clojure
