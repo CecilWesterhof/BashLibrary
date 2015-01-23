@@ -31,11 +31,11 @@
 # also displayed.
 #
 # memUsageProgram.sh:
-# Script that shows all processes using a certain command how much RSS
+# Script that shows all processes using certain commands how much RSS
 # memory they use, sorted on usage.
 # It shows the KB RSS Memory and PID.
 # Overall used RSS Memory and number of processes that use RSS Memory is
-# also displayed. (Only for processes using the command.)
+# also displayed. (Only for processes using the commands.)
 #
 # programsUsingMem:
 # Scripts that shows all commands that are using RSS Memory, sorted on
@@ -55,7 +55,7 @@
 # is also displayed.
 #
 # swapUsageProgram.sh:
-# Script that shows all processes using a certain command that use swap,
+# Script that shows all processes using certain commands that use swap,
 # sorted on usage.
 # It shows the KB swap and PID.
 # Overall used swap space and number of processes that use swap space
@@ -70,26 +70,53 @@ set -o nounset
 
 # Always define all used variables
 # I use uppercase for readonly variables
-declare -r DIVIDER="========================================"
-declare -r SCRIPTNAME="${0##*/}"
+declare -ir COMMAND_NAME_LEN=15
+declare -r  DIVIDER="========================================"
+declare -r  OLD_IFS="${IFS}"
+declare -r  SCRIPTNAME="${0##*/}"
 # These are set in the script itself. So no -r and a readonly in the script.
-declare    GET_COMMAND
-declare    NOTHING_FOUND
-declare    PROGNAME=""
-declare    REPORT_COMMAND
-declare    REPORT_STRING
+declare     GET_COMMAND
+declare     NOTHING_FOUND
+declare     PROGNAME
+declare     REPORT_COMMAND
+declare     REPORT_STRING
 
 # Holds all processes that need to be reported
 declare    allValues=()
 declare -i pid
 declare -i pidLen=1
+declare    prognameArray=()
 declare    statusFile
 declare -i usageLen=1
 declare -i totalUsage=0
 
 # functions
+function doWork {
+    for pid in $(ls -1 --directory [0-9]*) ; do
+        statusFile="/proc/${pid}/status"
+        # Script takes time, so make sure process stil exist
+        if [ -f "${statusFile}" ] ; then
+            "${GET_COMMAND}"
+        fi
+    done
+    if [[ "${#allValues[@]}" -eq 0 ]] ; then
+        printf "${NOTHING_FOUND}\n"
+    else
+        "${REPORT_COMMAND}"
+    fi
+}
+
 function getMem {
     getUsage "VmRSS"
+}
+
+function getPrognames {
+    IFS=:
+    set -- ${PROGNAME}
+    while [[ ${#} -ge 1 ]]; do
+        prognameArray+=("${1:0:${COMMAND_NAME_LEN}}"); shift
+    done
+    IFS="${OLD_IFS}"
 }
 
 # For lines that display usage in KB
@@ -108,24 +135,36 @@ function getSwap {
 }
 
 function getUsage {
+    local    name
     local    progname
     local -i usage
+    local    useProcess=no
 
     # Works because empty string equals 0
     # So when the sought entry is not found usage becomes zero
     usage=$(getStatusKBs "^${1}:")
     # Adds process that uses what is sought
-    if [[ ${usage} -gt 0 ]] ; then
+    if [[ "${usage}" -gt 0 ]] ; then
         progname=$(getStatusValue "^Name:")
-        if [[ "${PROGNAME}" == "" ]] || [[ "${PROGNAME}" == "${progname}" ]] ; then
+        if [[ "${#prognameArray[@]}" -eq 0 ]] ; then
+            useProcess=yes
+        else
+            for name in "${prognameArray[@]}" ; do
+                if [[ "${progname}" == "${name}" ]] ; then
+                    useProcess=yes
+                    break
+                fi
+            done
+        fi
+        if [[ "${useProcess}" == "yes" ]] ; then
             allValues+=("${usage}:${pid}:${progname}")
-            if [[ ${#usage} -gt ${usageLen} ]] ; then
+            if [[ "${#usage}" -gt "${usageLen}" ]] ; then
                 usageLen=${#usage}
             fi
-            if [[ ${#pid} -gt ${pidLen} ]] ; then
+            if [[ "${#pid}" -gt "${pidLen}" ]] ; then
                 pidLen=${#pid}
             fi
-            totalUsage+=${usage}
+            totalUsage+="${usage}"
         fi
     fi
 }
@@ -133,12 +172,15 @@ function getUsage {
 function reportFooter () {
     printf "${DIVIDER}\n"
     printf "Total used ${REPORT_STRING}: ${totalUsage} KB\n"
-    printf "There are ${#allValues[@]} processes using ${REPORT_STRING}\n"
+    if [[ ${#allValues[@]} -eq 1 ]] ; then
+        printf "There is 1 process"
+    else
+        printf "There are ${#allValues[@]} processes"
+    fi
+    printf " using ${REPORT_STRING}\n"
 }
 
 function reportProgramsUsing {
-    declare -r OLD_IFS="${IFS}"
-
     declare    progname
     declare    usageRecord
 
@@ -148,21 +190,19 @@ function reportProgramsUsing {
         IFS=:
         set -- ${usageRecord}
         progname="${3}"
-        IFS=${OLD_IFS}
+        IFS="${OLD_IFS}"
         printf "${progname}\n"
     done | sort --ignore-case | uniq
     reportFooter
 }
 
 function reportUsage {
-    declare -r OLD_IFS="${IFS}"
-
     declare -i pid
     declare    progname
     declare -i usage
     declare    usageRecord
 
-    if [[ "${PROGNAME}" != "" ]] ; then
+    if [[ ${#prognameArray[@]} -ne 0 ]] ; then
         printf "${REPORT_STRING} usage for ${PROGNAME}\n"
         printf "${DIVIDER}\n"
     fi
@@ -172,19 +212,20 @@ function reportUsage {
         usage="${1}"
         pid="${2}"
         progname="${3}"
-        IFS=${OLD_IFS}
-        if [[ "${PROGNAME}" == "" ]] ; then
-            printf "${REPORT_STRING} %${usageLen}d KB by PID=%-${pidLen}d (%s)\n" \
-                "${usage}" "${pid}" "${progname}"
-        else
-            printf "${REPORT_STRING} %${usageLen}d KB by PID=%-${pidLen}d\n" \
-                "${usage}" "${pid}"
+        IFS="${OLD_IFS}"
+        printf "${REPORT_STRING} %${usageLen}d KB by PID=%-${pidLen}d" \
+            "${usage}" "${pid}"
+        if [[ ${#prognameArray[@]} -ne 1 ]] ; then
+            printf " (%s)" "${progname}"
         fi
+        printf "\n"
     done | sort --key=2 --numeric-sort
     reportFooter
 }
 
+
 # main code
+cd /proc
 case "${SCRIPTNAME}" in
     memUsage.sh)
         if [[ "${#}" -ne 0 ]] ; then
@@ -203,6 +244,7 @@ case "${SCRIPTNAME}" in
         fi
         PROGNAME="${1}" ; shift
         readonly PROGNAME
+        getPrognames
         GET_COMMAND=getMem
         NOTHING_FOUND="No memory used with ${PROGNAME}"
         REPORT_COMMAND=reportUsage
@@ -245,6 +287,7 @@ case "${SCRIPTNAME}" in
         fi
         PROGNAME="${1}" ; shift
         readonly PROGNAME
+        getPrognames
         GET_COMMAND=getSwap
         NOTHING_FOUND="No swap used with ${PROGNAME}"
         REPORT_COMMAND=reportUsage
@@ -259,16 +302,4 @@ readonly GET_COMMAND
 readonly NOTHING_FOUND
 readonly REPORT_COMMAND
 readonly REPORT_STRING
-cd /proc
-for pid in $(ls -1 --directory [0-9]*) ; do
-    statusFile="/proc/${pid}/status"
-    # Script takes time, so make sure process stil exist
-    if [ -f "${statusFile}" ] ; then
-        "${GET_COMMAND}"
-    fi
-done
-if [[ "${#allValues[@]}" -eq 0 ]] ; then
-    printf "${NOTHING_FOUND}\n"
-else
-    "${REPORT_COMMAND}"
-fi
+doWork

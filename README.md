@@ -77,5 +77,9 @@ In time.sh:
 The bin directory contains:
 - clojure
 - swapUsage.sh: with links to
+  - memUsage.sh
+  - memUsageProgram.sh
+  - programsUsingMem.sh
   - programsUsingSwap.sh
   - swapUsageProgram.sh
+- installGuestAdditions.sh
