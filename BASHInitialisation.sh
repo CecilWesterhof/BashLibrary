@@ -318,7 +318,7 @@ function filterCommand {
 #   - fatal
 # - External function
 #   - acpi
-function getTemp {
+function getCPUTemperature {
     if [[ ${#} -ne 0 ]] ; then
         fatal "${FUNCNAME} does not take parameters"
         return

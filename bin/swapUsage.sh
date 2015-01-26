@@ -13,9 +13,9 @@
 #     https://www.kernel.org/doc/Documentation/filesystems/proc.txt
 # One of the things this describes is /proc/PID/status.
 #
-# At the moment the total swap space is about 90 percent of what ‘free’
-# displays. When someone knows the reason of this difference:
-# enlighten me. (bash@decebal.nl)
+# The total swap space that is reported can be quite different fror what
+# ‘free’ displays. This is because the kernel and tmpfs can also use
+# swap space. If anyone knows how to get those values: (bash@decebal.nl)
 #
 # I want to expand this script to show other metrics also. Let me know
 # if you want certain metrics. (bash@decebal.nl)
