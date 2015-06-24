@@ -1,0 +1,60 @@
+alias ..='cd ..'
+alias ...='cd ../..'
+alias a=alias
+alias census='who | awk '\''
+    BEGIN {
+        TOTAL_LEN    = 3
+        USER_LEN     = 12
+
+        FORMAT       = "%-" USER_LEN "s %" TOTAL_LEN "s"
+
+        DIVIDER      = sprintf(FORMAT, "", ""); gsub(/ /, "=", DIVIDER)
+        HEADING      = sprintf(FORMAT, "User", "Nr.")
+    }
+
+    END {
+        print HEADING
+        print DIVIDER
+        for (user in users) {
+            printf(FORMAT"\n",  user, users[user])
+        }
+        print DIVIDER
+        printf(FORMAT"\n",  "Total", count)
+    }
+
+    {
+        count     += 1
+        users[$1] += 1
+    }'\'''
+alias day='date +%A'
+alias definedFunctions="declare -f | grep -E '^[^ ]+ \(\) $'"
+alias df="df -h"
+alias directories="ls -l | grep ^d | wc -l"
+alias du="du -h"
+alias duG="du --block-size=1G -s * | sort -g"
+alias duK="du --block-size=1K -s * | sort -g"
+alias duM="du --block-size=1M -s * | sort -g"
+alias duUser='du -hs $(/bin/ls -l | awk '\''{ if ( $3 == "'$(whoami)'" ) { print $9 } }'\'')'
+alias ec="emacsclient --create-frame --no-wait"
+alias h=history
+alias l='ls -aFl'
+alias la='ls -al'
+alias ll='ls -hl'
+alias lm='ls -hl | more'
+alias ls='/bin/ls $LS_OPTIONS'
+alias month='date +%B'
+alias Ping="ping -c4"
+alias testSpeaker='speaker-test -c 2 -t wav -l 1'
+alias year='date +%Y'
+if which zypper >/dev/null ; then
+    alias zypper_ps='zypper ps | awk '\''
+                                     BEGIN { FS = "|" } ;
+                                     { if (NR > 4) {
+                                         if ($5 !~ /^[ ]*$/) print $5}
+                                     }'\'' | sort | uniq'
+fi
+if [ $USER == 'root' ]; then
+  alias messages="grep -v ^# /var/log/messages | tail -15"
+  alias queuedMail='find /var/spool/postfix/deferred -type f | wc -l'
+  alias setTime='date; sntp -s ntp.xs4all.nl >/dev/null; date; hwclock --systohc'
+fi
