@@ -15,9 +15,11 @@ set -o nounset
 # I use uppercase for readonly variables
 declare -r INSTALL_DIR=/usr/local/bash
 declare -r LINK_FILES=(
+    alias
     BASHInitialisation.sh
     bin
     disk.sh
+    network.sh
     random.sh
     systemd.sh
     time.sh
