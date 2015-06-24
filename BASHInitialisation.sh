@@ -546,15 +546,15 @@ function psPid {
 # - BASH variable
 #   - PS_OPTIONS
 function psPpid {
-    declare ppid
+    declare -i ppid                                                            # to get rid of space
 
     if [[ ${#} -ne 1 ]]; then
         fatal "${FUNCNAME} <PPID>"
         return
     fi
-    ppid=${1}; shift
+    ppid=$(ps --no-headers -p "${1}" -o ppid); shift
 
-    filterCommand --field 3 "ps ${PS_OPTIONS}" "^${ppid}\$"
+    psPid "${ppid}"
 }
 
 # Usage statusCode [<STATUS_CODE>]
@@ -806,6 +806,7 @@ function variableExist {
 ################################################################################
 includeDir=/usr/local/bash
 source ${includeDir}/disk.sh
+source ${includeDir}/network.sh
 source ${includeDir}/random.sh
 source ${includeDir}/systemd.sh
 source ${includeDir}/time.sh
