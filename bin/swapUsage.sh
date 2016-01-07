@@ -26,14 +26,14 @@
 # memUsage.sh:
 # Script that for all processes shows much RSS Memory they use, sorted
 # on usage.
-# It shows the KB RSS Memory, PID and name of the command.
+# It shows the MB RSS Memory, PID and name of the command.
 # Overall used RSS Memory and number of processes that use RSS Memory is
 # also displayed.
 #
 # memUsageProgram.sh:
 # Script that shows all processes using certain commands how much RSS
 # memory they use, sorted on usage.
-# It shows the KB RSS Memory and PID.
+# It shows the MB RSS Memory and PID.
 # Overall used RSS Memory and number of processes that use RSS Memory is
 # also displayed. (Only for processes using the commands.)
 #
@@ -50,14 +50,14 @@
 #
 # swapUsage.sh:
 # Script that shows all processes that use swap, sorted on usage.
-# It shows the KB swap, PID and name of the command.
+# It shows the MB swap, PID and name of the command.
 # Overall used swap space and number of processes that use swap space
 # is also displayed.
 #
 # swapUsageProgram.sh:
 # Script that shows all processes using certain commands that use swap,
 # sorted on usage.
-# It shows the KB swap and PID.
+# It shows the MB swap and PID.
 # Overall used swap space and number of processes that use swap space
 # is also displayed. (Only for processes using the command.)
 #
@@ -74,12 +74,14 @@ declare -ir COMMAND_NAME_LEN=15
 declare -r  DIVIDER="========================================"
 declare -r  OLD_IFS="${IFS}"
 declare -r  SCRIPTNAME="${0##*/}"
+
 # These are set in the script itself. So no -r and a readonly in the script.
 declare     GET_COMMAND
 declare     NOTHING_FOUND
 declare     PROGNAME
 declare     REPORT_COMMAND
 declare     REPORT_STRING
+declare     TAIL_COUNT=+0               # Default we want all output
 
 # Holds all processes that need to be reported
 declare    allValues=()
@@ -87,10 +89,23 @@ declare -i pid
 declare -i pidLen=1
 declare    prognameArray=()
 declare    statusFile
-declare -i usageLen=1
+declare -i usageLen=3
 declare -i totalUsage=0
 
 # functions
+function checkNoParameters {
+    if [[ "${#params[@]}" -ne 0 ]] ; then
+        errorNoParameters
+    fi
+}
+
+function checkOnlyCount {
+    getCount
+    if [[ "${#params[@]}" -ne 0 ]] ; then
+        errorOnlyCount
+    fi
+}
+
 function doWork {
     for pid in $(ls -1 --directory [0-9]*) ; do
         statusFile="/proc/${pid}/status"
@@ -106,11 +121,40 @@ function doWork {
     fi
 }
 
+function errorNoParameters {
+    printf "ERROR: ${SCRIPTNAME} does not take parameters\n"
+    exit 1
+}
+
+function errorNoPrograms {
+    printf "ERROR: ${SCRIPTNAME} [--count <NO OF PROCESSES TO DISPLAY>] <PROGRAMS>\n"
+    exit 1
+}
+
+function errorOnlyCount {
+    printf "ERROR: ${SCRIPTNAME} [--count <NO OF PROCESSES TO DISPLAY>]\n"
+    exit 1
+}
+
+function getCount {
+    if [[ "${#params[@]}" -ge 2 ]] && [[ "${params[0]}" == '--count' ]] ; then
+        TAIL_COUNT="${params[1]}"
+        params=("${params[@]:2}")
+    fi
+}
+
 function getMem {
     getUsage "VmRSS"
 }
 
 function getPrognames {
+    getCount
+    if [[ "${#params[@]}" -ne 1 ]] ; then
+        errorNoPrograms
+    fi
+    PROGNAME="${params[0]}"
+    params=("${params[@]:1}")
+    readonly PROGNAME
     IFS=:
     set -- ${PROGNAME}
     while [[ ${#} -ge 1 ]]; do
@@ -138,6 +182,7 @@ function getUsage {
     local    name
     local    progname
     local -i usage
+    local    usageString
     local    useProcess=no
 
     # Works because empty string equals 0
@@ -158,8 +203,9 @@ function getUsage {
         fi
         if [[ "${useProcess}" == "yes" ]] ; then
             allValues+=("${usage}:${pid}:${progname}")
-            if [[ "${#usage}" -gt "${usageLen}" ]] ; then
-                usageLen=${#usage}
+            usageString="$(printUsage ${usage})"
+            if [[ "${#usageString}" -gt "${usageLen}" ]] ; then
+                usageLen=${#usageString}
             fi
             if [[ "${#pid}" -gt "${pidLen}" ]] ; then
                 pidLen=${#pid}
@@ -169,9 +215,15 @@ function getUsage {
     fi
 }
 
+function printUsage {
+    printf "$(((${1} + 512) / 1024)) MB"
+}
+
 function reportFooter () {
+    declare -r TOTAL_USAGE="$(printUsage ${totalUsage})"
+
     printf "${DIVIDER}\n"
-    printf "Total used ${REPORT_STRING}: ${totalUsage} KB\n"
+    printf "Total used ${REPORT_STRING}: ${TOTAL_USAGE}\n"
     if [[ ${#allValues[@]} -eq 1 ]] ; then
         printf "There is 1 process"
     else
@@ -199,98 +251,142 @@ function reportProgramsUsing {
 function reportUsage {
     declare -i pid
     declare    progname
-    declare -i usage
+    declare    usage
     declare    usageRecord
 
+    printf "${REPORT_STRING} usage"
     if [[ ${#prognameArray[@]} -ne 0 ]] ; then
-        printf "${REPORT_STRING} usage for ${PROGNAME}\n"
-        printf "${DIVIDER}\n"
+        printf " for ${PROGNAME}"
     fi
+    printf "\n"
+    printf "${DIVIDER}\n"
     for usageRecord in "${allValues[@]}" ; do
         IFS=:
         set -- ${usageRecord}
-        usage="${1}"
+        usage="$(printUsage ${1})"
         pid="${2}"
         progname="${3}"
         IFS="${OLD_IFS}"
-        printf "${REPORT_STRING} %${usageLen}d KB by PID=%-${pidLen}d" \
+        printf "${REPORT_STRING} %${usageLen}s by PID=%-${pidLen}d" \
             "${usage}" "${pid}"
         if [[ ${#prognameArray[@]} -ne 1 ]] ; then
             printf " (%s)" "${progname}"
         fi
         printf "\n"
-    done | sort --key=2 --numeric-sort
+    done | sort --key=2 --numeric-sort | tail -n "${TAIL_COUNT}"
+    reportFooter
+}
+
+function reportUsageCombined {
+    declare -Ai combined
+    declare     combinedRecord
+    declare     combinedUsage
+    declare -i  pid
+    declare     progname
+    declare -i  usage
+    declare     usageRecord
+
+    printf "${REPORT_STRING} usage combined"
+    if [[ ${#prognameArray[@]} -ne 0 ]] ; then
+        printf " for ${PROGNAME}"
+    fi
+    printf "\n"
+    printf "${DIVIDER}\n"
+    for usageRecord in "${allValues[@]}" ; do
+        IFS=:
+        set -- ${usageRecord}
+        usage="${1}"
+        progname="${3}"
+        IFS="${OLD_IFS}"
+        combined["${progname}"]+="${usage}"
+        if [[ "${#combined[${progname}]}" -gt "${usageLen}" ]] ; then
+            usageLen="${#combined[${progname}]}"
+        fi
+    done
+    for combinedRecord in "${!combined[@]}" ; do
+        combinedUsage="$(printUsage ${combined[${combinedRecord}]})"
+        printf "${REPORT_STRING} %${usageLen}s" "${combinedUsage}"
+        if [[ ${#prognameArray[@]} -ne 1 ]] ; then
+            printf " by %s" "${combinedRecord}"
+        fi
+        printf "\n"
+    done | sort --key=2 --numeric-sort | tail -n "${TAIL_COUNT}"
     reportFooter
 }
 
 
 # main code
+params=("${@}")
 cd /proc
 case "${SCRIPTNAME}" in
     memUsage.sh)
-        if [[ "${#}" -ne 0 ]] ; then
-            printf "ERROR: ${SCRIPTNAME} does not take parameters\n"
-            exit 1
-        fi
+        checkOnlyCount
         GET_COMMAND=getMem
         NOTHING_FOUND="No memory used"
         REPORT_COMMAND=reportUsage
         REPORT_STRING="RSSMemory"
         ;;
+    memUsageCombined.sh)
+        checkOnlyCount
+        GET_COMMAND=getMem
+        NOTHING_FOUND="No memory used"
+        REPORT_COMMAND=reportUsageCombined
+        REPORT_STRING="RSSMemory"
+        ;;
     memUsageProgram.sh)
-        if [[ "${#}" -ne 1 ]] ; then
-            printf "ERROR: ${SCRIPTNAME} <PROGRAM>\n"
-            exit 1
-        fi
-        PROGNAME="${1}" ; shift
-        readonly PROGNAME
         getPrognames
         GET_COMMAND=getMem
         NOTHING_FOUND="No memory used with ${PROGNAME}"
         REPORT_COMMAND=reportUsage
         REPORT_STRING="RSSMemory"
         ;;
+    memUsageProgramCombined.sh)
+        getPrognames
+        GET_COMMAND=getMem
+        NOTHING_FOUND="No memory used with ${PROGNAME}"
+        REPORT_COMMAND=reportUsageCombined
+        REPORT_STRING="RSSMemory"
+        ;;
     programsUsingMem.sh)
-        if [[ "${#}" -ne 0 ]] ; then
-            printf "ERROR: ${SCRIPTNAME} does not take parameters\n"
-            exit 1
-        fi
+        checkNoParameters
         GET_COMMAND=getMem
         NOTHING_FOUND="No memory used"
         REPORT_COMMAND=reportProgramsUsing
         REPORT_STRING="RSS Memory"
         ;;
     programsUsingSwap.sh)
-        if [[ "${#}" -ne 0 ]] ; then
-            printf "ERROR: ${SCRIPTNAME} does not take parameters\n"
-            exit 1
-        fi
+        checkNoParameters
         GET_COMMAND=getSwap
         NOTHING_FOUND="No swap used"
         REPORT_COMMAND=reportProgramsUsing
         REPORT_STRING="swap"
         ;;
     swapUsage.sh)
-        if [[ "${#}" -ne 0 ]] ; then
-            printf "ERROR: ${SCRIPTNAME} does not take parameters\n"
-            exit 1
-        fi
+        checkOnlyCount
         GET_COMMAND=getSwap
         NOTHING_FOUND="No swap used"
         REPORT_COMMAND=reportUsage
         REPORT_STRING="swap"
         ;;
+    swapUsageCombined.sh)
+        checkOnlyCount
+        GET_COMMAND=getSwap
+        NOTHING_FOUND="No swap used"
+        REPORT_COMMAND=reportUsageCombined
+        REPORT_STRING="swap"
+        ;;
     swapUsageProgram.sh)
-        if [[ "${#}" -ne 1 ]] ; then
-            printf "ERROR: ${SCRIPTNAME} <PROGRAM>\n"
-            exit 1
-        fi
-        PROGNAME="${1}" ; shift
-        readonly PROGNAME
         getPrognames
         GET_COMMAND=getSwap
         NOTHING_FOUND="No swap used with ${PROGNAME}"
         REPORT_COMMAND=reportUsage
+        REPORT_STRING="swap"
+        ;;
+    swapUsageProgramCombined.sh)
+        getPrognames
+        GET_COMMAND=getSwap
+        NOTHING_FOUND="No swap used with ${PROGNAME}"
+        REPORT_COMMAND=reportUsageCombined
         REPORT_STRING="swap"
         ;;
     *)
@@ -302,4 +398,5 @@ readonly GET_COMMAND
 readonly NOTHING_FOUND
 readonly REPORT_COMMAND
 readonly REPORT_STRING
+readonly TAIL_COUNT
 doWork
