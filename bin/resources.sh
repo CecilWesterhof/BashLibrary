@@ -123,9 +123,9 @@ elif [[ "${errorCode}" -ne 0 ]] ; then
 fi
 if [[ "${ONLY_OUTPUT}" != "T" ]] ; then
     if [[ "${OVERWRITE}" == "T" ]] ; then
-        printf "${DELETE_SAVED}" | sqlite3 "${DATABASE}"
+        sqlite3 "${DATABASE}" "${DELETE_SAVED}"
     else
-        isSaved=$(printf "${WAS_ALREADY_SAVED}" | sqlite3 "${DATABASE}")
+        isSaved=$(sqlite3 "${DATABASE}" "${WAS_ALREADY_SAVED}")
         if [[ "${isSaved}" != "" ]] ; then
             printf "There is already data for %s.\nQuiting\n" "${DATE}"
             exit
