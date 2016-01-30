@@ -107,6 +107,20 @@ declare size
 declare used
 
 
+# Check the database is not locked
+# Temporaly disable exit on error
+set +o errexit
+sqlite3 "${DATABASE}" "begin immediate" 2>/dev/null
+errorCode="${?}"
+# Enable exit on error again
+set -o errexit
+# The value 5 signifies that the database is locked
+if [[ "${errorCode}" -eq 5 ]] ; then
+    fatal "${DATABASE} is locked"
+# There is another problem
+elif [[ "${errorCode}" -ne 0 ]] ; then
+    fatal "Error ${errorCode} while accessing ${DATABASE}\n"
+fi
 if [[ "${ONLY_OUTPUT}" != "T" ]] ; then
     if [[ "${OVERWRITE}" == "T" ]] ; then
         printf "${DELETE_SAVED}" | sqlite3 "${DATABASE}"
