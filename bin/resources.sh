@@ -83,6 +83,8 @@ declare -r PART_INSERT="
 declare -r PART_OUTPUT="%-8s %4s %4s %4s %4s\n"
 declare -r PART_SELECT="SELECT value FROM variables where name = 'partitions';"
 declare -r PARTITIONS="$(sqlite3 ${DATABASE} <<<${PART_SELECT})"
+# This looks eleborate, but maybe nothing is saved for one of the two
+# so I need to check both
 declare -r WAS_ALREADY_SAVED="
     SELECT date
     FROM   directoryUsage
