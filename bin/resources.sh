@@ -43,6 +43,9 @@ if [[ "${#}" -ne 1 ]] ; then
     return
 fi
 
+declare -i length
+declare    name
+declare -i tmpLen
 
 declare -r DATABASE="${1}" ; shift
 if [[ "${RUN_OFTEN}" == "T" ]] ; then
@@ -65,9 +68,17 @@ declare -r DIR_INSERT="
     ('%s', '%s', '%s')
     ;
 "
-declare -r DIR_OUTPUT="%-12s %4s\n"
 declare -r DIR_SELECT="SELECT value FROM variables WHERE name = 'directories';"
 declare -r DIRS=$(sqlite3 ${DATABASE} <<<${DIR_SELECT})
+length=4
+for name in ${DIRS} ; do
+    tempLen=${#name}
+    if [[ ${tempLen} -gt ${length} ]] ; then
+        length=tempLen
+    fi
+done
+declare -r DIR_OUTPUT="%-${length}s %4s\n"
+echo $DIR_OUTPUT
 if [[ "${RAW_OUTPUT}" == "T" ]] ; then
     declare -r OUTPUT_TYPE="-k"
 else
@@ -80,9 +91,17 @@ declare -r PART_INSERT="
     ('%s', '%s', '%s', '%s', '%s', '%s')
     ;
 "
-declare -r PART_OUTPUT="%-8s %4s %4s %4s %4s\n"
 declare -r PART_SELECT="SELECT value FROM variables where name = 'partitions';"
 declare -r PARTITIONS="$(sqlite3 ${DATABASE} <<<${PART_SELECT})"
+length=4
+for name in ${PARTITIONS} ; do
+    tempLen=${#name}
+    if [[ ${tempLen} -gt ${length} ]] ; then
+        length=tempLen
+    fi
+done
+declare -r PART_OUTPUT="%-${length}s %4s %4s %4s %4s\n"
+echo $PART_OUTPUT
 # This looks eleborate, but maybe nothing is saved for one of the two
 # so I need to check both
 declare -r WAS_ALREADY_SAVED="
