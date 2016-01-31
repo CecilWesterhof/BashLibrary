@@ -78,7 +78,6 @@ for name in ${DIRS} ; do
     fi
 done
 declare -r DIR_OUTPUT="%-${length}s %4s\n"
-echo $DIR_OUTPUT
 if [[ "${RAW_OUTPUT}" == "T" ]] ; then
     declare -r OUTPUT_TYPE="-k"
 else
@@ -101,7 +100,6 @@ for name in ${PARTITIONS} ; do
     fi
 done
 declare -r PART_OUTPUT="%-${length}s %4s %4s %4s %4s\n"
-echo $PART_OUTPUT
 # This looks eleborate, but maybe nothing is saved for one of the two
 # so I need to check both
 declare -r WAS_ALREADY_SAVED="
