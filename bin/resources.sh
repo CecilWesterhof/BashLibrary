@@ -78,10 +78,14 @@ for name in ${DIRS} ; do
     fi
 done
 declare -r DIR_OUTPUT="%-${length}s %4s\n"
+declare -r MAYBE_DIRS_SELECT="SELECT value FROM variables WHERE name = 'maybeDirs';"
+declare -r MAYBE_DIRS=$(sqlite3 ${DATABASE} <<<${MAYBE_DIRS_SELECT})
 if [[ "${RAW_OUTPUT}" == "T" ]] ; then
-    declare -r OUTPUT_TYPE="-k"
+    declare -r OUTPUT_TYPE_DF="-k"
+    declare -r OUTPUT_TYPE_DU="-ks"
 else
-    declare -r OUTPUT_TYPE="-h"
+    declare -r OUTPUT_TYPE_DF="-h"
+    declare -r OUTPUT_TYPE_DU="-hs"
 fi
 declare -r PART_INSERT="
     INSERT INTO partitionUsage
@@ -151,31 +155,42 @@ if [[ "${ONLY_OUTPUT}" != "T" ]] ; then
 fi
 
 
-while read used directory ; do
-    printf "${DIR_OUTPUT}"           "${directory}" "${used}"
-    if [[ "${ONLY_OUTPUT}" != "T" ]] ; then
-        printf "${DIR_INSERT}" "${DATE}" "${directory}" "${used}" | \
-            sqlite3 "${DATABASE}"
-    fi
-done < <(du -hs ${DIRS})
-
-echo
-
-{
-    read line
-    while read filesystem size used available percentUsed partition ; do
-        printf                                  \
-            "${PART_OUTPUT}"                    \
-            "${partition}"                      \
-            "${size}" "${used}" "${available}"  \
-            "${percentUsed}"
+if [[ "${DIRS}" != "" ]] ; then
+    while read used directory ; do
+        printf "${DIR_OUTPUT}"           "${directory}" "${used}"
         if [[ "${ONLY_OUTPUT}" != "T" ]] ; then
+            printf "${DIR_INSERT}" "${DATE}" "${directory}" "${used}" | \
+                sqlite3 "${DATABASE}"
+        fi
+    done < <(du ${OUTPUT_TYPE_DU} ${DIRS})
+    echo
+fi
+
+if [[ "${PARTITIONS}" != "" ]] ; then
+    {
+        read line
+        while read filesystem size used available percentUsed partition ; do
             printf                                  \
-                "${PART_INSERT}"                    \
-                "${DATE}"                           \
+                "${PART_OUTPUT}"                    \
                 "${partition}"                      \
                 "${size}" "${used}" "${available}"  \
-                "${percentUsed}"                    | sqlite3 "${DATABASE}"
-        fi
-    done
-} < <(df "${OUTPUT_TYPE}" ${PARTITIONS})
+                "${percentUsed}"
+            if [[ "${ONLY_OUTPUT}" != "T" ]] ; then
+                printf                                  \
+                    "${PART_INSERT}"                    \
+                    "${DATE}"                           \
+                    "${partition}"                      \
+                    "${size}" "${used}" "${available}"  \
+                    "${percentUsed}"                    | sqlite3 "${DATABASE}"
+            fi
+        done
+    } < <(df "${OUTPUT_TYPE_DF}" ${PARTITIONS})
+    echo
+fi
+
+if [[ "${MAYBE_DIRS}" != "" ]] ; then
+    while read used directory ; do
+        printf "%4s %s\n" "${used}" "${directory}"
+    done < <(du ${OUTPUT_TYPE_DU} ${MAYBE_DIRS} | grep ^[0-9.]*G | sort -h)
+    echo
+fi
