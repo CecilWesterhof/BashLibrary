@@ -18,6 +18,12 @@ better documentation: let me know.
 
 If you would like to see a certain function: let me know.
 
+To install the library on your system run install.sh.
+Use ‘source /usr/local/bash/BASHInitialisation.sh’ (in .bashrc) to
+initialise the library.
+To use the scripts add /usr/local/bash/bin to your PATH.
+
+
 The files contain the following functions:
 
 In BASHInitialisation.sh:
@@ -90,10 +96,10 @@ In time.sh:
 
 The bin directory contains:
 - clojure
+- installGuestAdditions.sh
 - swapUsage.sh: with links to
   - memUsage.sh
   - memUsageProgram.sh
   - programsUsingMem.sh
   - programsUsingSwap.sh
   - swapUsageProgram.sh
-- installGuestAdditions.sh

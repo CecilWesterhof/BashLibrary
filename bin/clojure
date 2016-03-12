@@ -18,23 +18,32 @@ set -o nounset
 
 # Always define all used variables
 # I use uppercase for readonly variables
-declare -r CLOJURE_JAR=/usr/local/clojure/clojure.jar
-declare -r CLOJURE_INIT=~/Clojure/repl-startup.clj
+declare -r CLOJURE_DIR=/usr/local/clojure
+declare -r CLOJURE_JAR="${CLOJURE_DIR}/clojure.jar"
+declare -r CLOJURE_JAR_ALPHA="${CLOJURE_DIR}/clojure-alpha.jar"
+declare -r CLOJURE_INIT=~/Clojure/repl/repl-startup.clj
+declare    CP
+declare -r CP_EXTRA=":${CLOJURE_DIR}/data.int-map.jar:${CLOJURE_DIR}/data.avl.jar:${HOME}/Clojure/repl"
 
+if [[ ${#} -ge 1 ]] && [[ "${1}" == --alpha ]] ; then
+    CP="${CLOJURE_JAR_ALPHA}"; shift
+else
+    CP="${CLOJURE_JAR}"
+fi
+CP+="${CP_EXTRA}"
+readonly CP
 
 # main code
 if [[ ${#} -eq 0 ]] ; then
     # REPL
-    printf "To exit clojure enter:\n"
-    printf "    (System/exit 0)\n"
     if [ -f "${CLOJURE_INIT}" ] ; then
-        rlwrap java -cp ${CLOJURE_JAR} clojure.main --init ~/Clojure/repl-startup.clj --repl
+        rlwrap java -cp "${CP}" clojure.main --init "${CLOJURE_INIT}" --repl
     else
-        rlwrap java -cp ${CLOJURE_JAR} clojure.main
+        rlwrap java -cp "${CP}" clojure.main
     fi
 else
     # Script with parameters (if any)
-    rlwrap java -cp ${CLOJURE_JAR} clojure.main ${1} -- "${@}"
+    rlwrap java -cp "${CP}" clojure.main "${1}" -- "${@}"
 fi
 
 

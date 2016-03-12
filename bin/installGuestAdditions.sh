@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# For this script to work you should have installed:
+# - headers current running kernel
+# - gcc
+
 
 # An error should terminate the script
 set -o errexit
