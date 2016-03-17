@@ -15,7 +15,7 @@ set -o nounset
 
 # I always declare the variables I use
 # I use all caps for read only variables
-declare -r  DEBUG=F                    # T to get debug information
+declare -r  DEBUG=T                    # T to get debug information
 declare -ir MIN_LOCKED=5
 
 declare -i minInDayLocked
@@ -27,7 +27,7 @@ declare    screenSaver
 # When DEBUG is 'T' print message with a timestamp
 function debug {
     if [[ "${DEBUG}" == T ]] ; then
-        printf "%s: %s\n" "$(date +%T)" "${1}" 1>&2
+        printf "%s: %s\n" "$(date +%T)" "${1}" >>~/Logging/suspend$(date +%F).log
     fi
 }
 
@@ -65,10 +65,11 @@ function getMinutesDifference {
     printf ${diff}
 }
 
-if ! xscreensaver-command -time >/dev/null 2>&1 ; then
-    printf "To run ${0##*/} you need to have run the screensaver at least once.\n"
-    exit 1
-fi
+debug "Before xscreensaver check"
+while ! xscreensaver-command -time >/dev/null 2>&1 ; do
+    sleep $(( MIN_LOCKED * 60 ))
+done
+debug "After xscreensaver check"
 # Do it ‘forever’
 while : ; do
     # Get screensaver status and since when
