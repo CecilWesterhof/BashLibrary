@@ -65,6 +65,11 @@ function getMinutesDifference {
     printf ${diff}
 }
 
+# When run from systemd DISPLAY is not set.
+# Set it to the value that is going to be used to circumvent warnings
+if [ ! -v DISPLAY ] ; then
+    export DISPLAY=":0.0"
+fi
 debug "Before xscreensaver check"
 while ! xscreensaver-command -time >/dev/null 2>&1 ; do
     sleep $(( MIN_LOCKED * 60 ))
