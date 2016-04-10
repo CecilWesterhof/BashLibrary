@@ -36,7 +36,7 @@ function debug {
 # - hh:mm
 # - hh:mm:ss
 # - …
-# Only the hours and minutes are necesary.
+# Only the hours and minutes are necessary.
 # No check if the format is correct
 # Hours or minutes can start with a zero, that is why I use 10#
 function getMinutes {
@@ -48,7 +48,7 @@ function getMinutes {
 # - hh:mm
 # - hh:mm:ss
 # - …
-# Only the hours and minutes are necesary.
+# Only the hours and minutes are necessary.
 # No check if the format or number of parameters is correct
 function getMinutesDifference {
     declare -i diff
