@@ -5,7 +5,7 @@ set -o nounset
 
 
 function getExtensionPacks {
-    /usr/bin/env ls -1 -rt "${DOWNLOAD_DIR}/"*"${EXTENSION}"
+    /usr/bin/env ls -1 -v "${DOWNLOAD_DIR}/"*"${EXTENSION}"
 }
 
 
@@ -31,7 +31,7 @@ if [ $(id -u) -ne 0 ]; then
     printf "${SCRIPTNAME} must be run as root\n" 1>&2
     exit 1
 fi
-# When last version alreay installed there is nothing to do
+# When last version already installed there is nothing to do
 if [[ ${INSTALLED} == ${toInstallClean} ]] ; then
     printf "${NO_UPDATE_NEEDED}" "${INSTALLED}"
     exit

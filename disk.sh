@@ -7,6 +7,8 @@
 # - getFunctionsFromFile
 # - includeFile
 # - isReadableFile
+# - localFind
+# - pushdCheck
 # - removeSpacesFromFileNames
 # - removeSpecialCharsFromFileName
 # - sizeOfFolder
