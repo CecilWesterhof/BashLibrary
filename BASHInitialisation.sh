@@ -1,10 +1,12 @@
 # Functions:
+# - addToPath
 # - calc
 # - canRun
 # - chall
 # - cdll
 # - checkNetworkInterface
 # - checkReadOnlyVariables
+# - cleanPath
 # - commandExists
 # - convertInput
 # - defaultPS_OPTIONS
@@ -14,6 +16,7 @@
 # - getCPUTemperature
 # - getIPs
 # - getOptionValue
+# - getPathDirs
 # - isInteractive
 # - isVarSet
 # - loadXmodmapExtra
@@ -26,6 +29,7 @@
 # - psPpid
 # - psStatus
 # - psUser
+# - removeFromPath
 # - screent
 # - showMessage
 # - stackTrace
@@ -49,6 +53,59 @@
 ################################################################################
 # Functions                                                                    #
 ################################################################################
+
+# Usage: AddToPath [--start|--end] [--no-reorder] <DIRECTORY_TO_ADD>
+# Adds a directory to PATH
+# Default to the front, but can also be on the end
+# Default at the the old place the directory is deleted,
+# but with --no-reorder PATH will not be changed if it already contains the directory.
+# Needed:
+# - BASH functions
+#  - fatal
+function addToPath {
+    declare -r USAGE="USAGE: ${FUNCNAME} [--start|--end] [--no-reorder] <DIRECTORY_TO_ADD>"
+
+    declare    ALWAYS_SET=y
+    declare    START=y
+    declare    ADD_DIR
+
+    declare    dir
+    declare    path=""
+
+    if [[ ${#} -ge 1 ]] ; then
+        if [[ ${1} == --start ]] ; then
+            START=y ; shift
+        elif [[ ${1} == --end ]] ; then
+            START=n ; shift
+        fi
+    fi
+    readonly START
+    if [[ ${#} -ge 1 && ${1} == --no-reorder ]] ; then
+        ALWAYS_SET=n ; shift
+    fi
+    readonly ALWAYS_SET
+    if [[ ${#} -ne 1 ]] ; then
+        fatal "${USAGE}"
+        return
+    fi
+    ADD_DIR="${1}" ; shift
+
+    while read dir ; do
+        if [[ ${dir} == ${ADD_DIR} ]] ; then
+            if [[ ${ALWAYS_SET} == y ]] ; then
+                continue
+            fi
+            return
+        fi
+        path+="${dir}:"
+    done < <(getPathDirs)
+    if [[ ${START} == y ]] ; then
+        path="${ADD_DIR}:${path}"
+    else
+        path="${path}${ADD_DIR}:"
+    fi
+    PATH="${path:0:-1}"
+}
 
 # Usage: calc <EXPRESSION>
 # Gives an expression to be evaluated to bc
@@ -181,6 +238,34 @@ function checkReadOnlyVariables {
             }
         }
   '
+}
+
+# Usage: cleanPath
+# Makes sure that directories are not more as once in PATH
+# Needed:
+# - Bash 4 because it uses associative arrays
+# - BASH functions
+#  - fatal
+function cleanPath {
+    declare -r USAGE="USAGE: ${FUNCNAME}"
+
+    declare    dir
+    declare -A found
+    declare    path
+
+    if [[ ${#} -ne 0 ]] ; then
+        fatal "${USAGE}"
+        return
+    fi
+
+    while read dir ; do
+        if [[ ${found[$dir]} ]] ; then
+            continue
+        fi
+        path+="${dir}:"
+        found["${dir}"]=1
+    done < <(getPathDirs)
+    PATH="${path:0:-1}"
 }
 
 # Usage: commandExists: commandExists <COMMAND_TO_CHECK>
@@ -365,6 +450,28 @@ function getOptionValue {
     OPTION=${1}; shift
 
     set -o | awk '/^'"${OPTION} "'/ {print $2; exit; }'
+}
+
+# Usage: getPathDirs
+# Displays all directories that are searched for entered commands
+# Needed:
+# - BASH functions
+#  - fatal
+function getPathDirs {
+    declare -r OLD_IFS="${IFS}"
+    declare -r USAGE="USAGE: ${FUNCNAME}"
+
+    if [[ ${#} -ne 0 ]] ; then
+        fatal "${USAGE}"
+        return
+    fi
+
+    IFS=':'
+    set -- ${PATH}
+    IFS="${OLD_IFS}"
+    while [[ "${#}" -gt 0 ]] ; do
+        printf "${1}\n" ; shift
+    done
 }
 
 # Usage: isInteractive
@@ -599,6 +706,35 @@ function psUser {
     USER=${1}; shift
 
     filterCommand --field 1 "ps ${PS_OPTIONS}" "${USER}"
+}
+
+# Usage: removeFromPath <DIRECTORY_TO_REMOVE>
+# Removes a directory from PATH
+# Needed:
+# - BASH functions
+#  - fatal
+function removeFromPath {
+    declare -r USAGE="USAGE: ${FUNCNAME} <DIRECTORY_TO_REMOVE>"
+
+    declare    REMOVE_DIR
+
+    declare    dir
+    declare    path=""
+
+    if [[ ${#} -ne 1 ]] ; then
+        fatal "${USAGE}"
+        return
+    fi
+    REMOVE_DIR="${1}" ; shift
+    readonly REMOVE_DIR
+
+    while read dir ; do
+        if [[ ${dir} == ${REMOVE_DIR} ]] ; then
+            continue
+        fi
+        path+="${dir}:"
+    done < <(getPathDirs)
+    PATH="${path:0:-1}"
 }
 
 # Usage: screent <USER>

@@ -27,12 +27,14 @@ To use the scripts add /usr/local/bash/bin to your PATH.
 The files contain the following functions:
 
 In BASHInitialisation.sh:
+- addToPath
 - calc
 - canRun
 - chall
 - cdll
 - checkNetworkInterface
 - checkReadOnlyVariables
+- cleanPath
 - commandExists
 - convertInput
 - default_PS_OPTIONS
@@ -42,6 +44,7 @@ In BASHInitialisation.sh:
 - getCPUTemperature
 - getIPs
 - getOptionValue
+- getPathDirs
 - isInteractive
 - isVarSet
 - loadXmodmapExtra
@@ -54,6 +57,7 @@ In BASHInitialisation.sh:
 - psPpid
 - psStatus
 - psUser
+- removeFromPath
 - screent
 - showMessage
 - stackTrace
