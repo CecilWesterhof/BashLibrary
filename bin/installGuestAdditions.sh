@@ -17,6 +17,7 @@ declare -r MEDIA=/media/cdrom
 # This is set in the script itself. So no -r and a readonly in the script.
 declare    IS_MOUNTED=no
 
+
 # main code
 if grep -q "${MEDIA}" /proc/mounts; then
     IS_MOUNTED=yes
