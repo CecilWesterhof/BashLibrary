@@ -58,5 +58,5 @@ fi
 if [ $USER == 'root' ]; then
   alias messages="grep -v ^# /var/log/messages | tail -15"
   alias queuedMail='find /var/spool/postfix/deferred -type f | wc -l'
-  alias setTime='date; sntp -s ntp.xs4all.nl >/dev/null; date; hwclock --systohc'
+  alias setTime='date; sntp -S ntp.xs4all.nl >/dev/null; date; hwclock --systohc'
 fi
