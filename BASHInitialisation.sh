@@ -474,6 +474,22 @@ function getPathDirs {
     done
 }
 
+# Usage: getRSSAndSwap PID
+# Displays VmRSS and VmSwap of the proces with process id PID
+# Needed:
+# - BASH functions
+#  - fatal
+function getRSSAndSwap {
+    declare -r USAGE="USAGE: ${FUNCNAME} PID"
+
+    if [[ ${#} -ne 1 ]] ; then
+        fatal "${USAGE}"
+        return
+    fi
+    grep --extended-regexp 'VmRSS|VmSwap' "/proc/${1}/status"
+}
+
+
 # Usage: isInteractive
 # Interactive shell or not?
 # Needed:
@@ -769,7 +785,7 @@ function showMessage {
   local -r MESSAGE="${1}"; shift
 
   if [[ ${SHOW_MESSAGE} == y ]] ; then
-    printf "$(date +%T): ${MESSAGE}\n"
+    printf "%s: %s\n" "$(date +%F_%T)" "${MESSAGE}"
   fi
 }
 
