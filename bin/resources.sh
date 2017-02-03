@@ -15,11 +15,13 @@ fi
 set -o errexit
 set -o nounset
 
+
 declare    ONLY_OUTPUT="N"
 declare    OVERWRITE="N"
 declare    RAW_OUTPUT="N"
 declare    RUN_OFTEN="N"
 declare -r SCRIPT_NAME="${0##*/}"
+declare -r TIME_OUT='5000'
 declare -r USAGE="${SCRIPT_NAME} [--only-output] [--overwrite] [--raw-output] [--run-often] <DATABASE>"
 
 if [[ "${#}" -ge 1 ]] && [[ "${1}" == '--only-output' ]]; then
@@ -43,11 +45,29 @@ if [[ "${#}" -ne 1 ]] ; then
     return
 fi
 
+declare -r DATABASE="${1}" ; shift
+sleep 10
+# Check the database is not locked
+# Temporaly disable exit on error
+set +o errexit
+sqlite3 "${DATABASE}" "begin immediate" 2>/dev/null
+errorCode="${?}"
+# Enable exit on error again
+set -o errexit
+# The value 5 signifies that the database is locked
+if [[ ${errorCode} -eq 5 ]] ; then
+    fatal "${DATABASE} is locked"
+# There is another problem
+elif [[ ${errorCode} -ne 0 ]] ; then
+    fatal "Error ${errorCode} while accessing ${DATABASE}\n"
+fi
+
+
 declare -i length
 declare    name
 declare -i tmpLen
 
-declare -r DATABASE="${1}" ; shift
+
 if [[ "${RUN_OFTEN}" == "T" ]] ; then
     declare -r DATE=$(date +%F_%T)
 else
@@ -128,20 +148,6 @@ declare size
 declare used
 
 
-# Check the database is not locked
-# Temporaly disable exit on error
-set +o errexit
-sqlite3 "${DATABASE}" "begin immediate" 2>/dev/null
-errorCode="${?}"
-# Enable exit on error again
-set -o errexit
-# The value 5 signifies that the database is locked
-if [[ "${errorCode}" -eq 5 ]] ; then
-    fatal "${DATABASE} is locked"
-# There is another problem
-elif [[ "${errorCode}" -ne 0 ]] ; then
-    fatal "Error ${errorCode} while accessing ${DATABASE}\n"
-fi
 if [[ "${ONLY_OUTPUT}" != "T" ]] ; then
     if [[ "${OVERWRITE}" == "T" ]] ; then
         sqlite3 "${DATABASE}" "${DELETE_SAVED}"
@@ -181,7 +187,7 @@ if [[ "${PARTITIONS}" != "" ]] ; then
                     "${DATE}"                           \
                     "${partition}"                      \
                     "${size}" "${used}" "${available}"  \
-                    "${percentUsed}"                    | sqlite3 "${DATABASE}"
+                    "${percentUsed}"                    | sqlite3 -cmd ".timeout ${TIME_OUT}" "${DATABASE}"
             fi
         done
     } < <(df "${OUTPUT_TYPE_DF}" ${PARTITIONS})
