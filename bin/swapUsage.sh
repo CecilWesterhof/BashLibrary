@@ -70,6 +70,7 @@ set -o nounset
 
 # Always define all used variables
 # I use uppercase for readonly variables
+declare -r  COMBINED_TAIL_COUNT=5
 declare -ir COMMAND_NAME_LEN=15
 declare -r  DIVIDER="========================================"
 declare -r  OLD_IFS="${IFS}"
@@ -103,6 +104,13 @@ function checkOnlyCount {
     getCount
     if [[ "${#params[@]}" -ne 0 ]] ; then
         errorOnlyCount
+    fi
+}
+
+function checkPrognames {
+    getCount
+    if [[ "${#params[@]}" -ne 1 ]] ; then
+        errorNoPrograms
     fi
 }
 
@@ -148,10 +156,7 @@ function getMem {
 }
 
 function getPrognames {
-    getCount
-    if [[ "${#params[@]}" -ne 1 ]] ; then
-        errorNoPrograms
-    fi
+    checkPrognames
     PROGNAME="${params[0]}"
     params=("${params[@]:1}")
     readonly PROGNAME
@@ -319,6 +324,40 @@ function reportUsageCombined {
 params=("${@}")
 cd /proc
 case "${SCRIPTNAME}" in
+    # Combined versions
+    memAndSwap.sh)
+        TAIL_COUNT="${COMBINED_TAIL_COUNT}"
+        checkOnlyCount
+        memUsage.sh  --count "${TAIL_COUNT}"
+        printf '\n'
+        swapUsage.sh --count "${TAIL_COUNT}"
+        exit 0
+        ;;
+    memAndSwapCombined.sh)
+        TAIL_COUNT="${COMBINED_TAIL_COUNT}"
+        checkOnlyCount
+        memUsageCombined.sh  --count "${TAIL_COUNT}"
+        printf '\n'
+        swapUsageCombined.sh --count "${TAIL_COUNT}"
+        exit 0
+        ;;
+    memAndSwapProgram.sh)
+        TAIL_COUNT="${COMBINED_TAIL_COUNT}"
+        checkPrognames
+        memUsageProgram.sh  --count "${TAIL_COUNT}" "${params}"
+        printf '\n'
+        swapUsageProgram.sh --count "${TAIL_COUNT}" "${params}"
+        exit 0
+        ;;
+    memAndSwapProgramCombined.sh)
+        TAIL_COUNT="${COMBINED_TAIL_COUNT}"
+        checkPrognames
+        memUsageProgramCombined.sh  --count "${TAIL_COUNT}" "${params}"
+        printf '\n'
+        swapUsageProgramCombined.sh --count "${TAIL_COUNT}" "${params}"
+        exit 0
+        ;;
+    # Single versions
     memUsage.sh)
         checkOnlyCount
         GET_COMMAND=getMem
