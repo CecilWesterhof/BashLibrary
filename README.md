@@ -4,7 +4,7 @@ BashLibrary
 A BASH library with useful functions.
 There is also a bin directory with useful scripts.
 Copyright:
-  2013 - 2014 by Cecil Westerhof
+  2013 - 2023 by Cecil Westerhof
 Contact:
   bash@decebal.nl
 
@@ -33,16 +33,16 @@ In BASHInitialisation.sh:
 - chall
 - cdll
 - checkNetworkInterface
+- checkReadableDirectory
 - checkReadOnlyVariables
 - cleanPath
 - commandExists
 - convertInput
-- default_PS_OPTIONS
+- defaultPS_OPTIONS
 - elementInList
 - fatal
 - filterCommand
 - getCPUTemperature
-- getIPs
 - getOptionValue
 - getPathDirs
 - isInteractive
@@ -51,6 +51,9 @@ In BASHInitialisation.sh:
 - logDRY
 - logError
 - logMsg
+- nrOfDirs
+- nrOfFiles
+- nrOfFilesAndDirs
 - psCommand
 - psGrep
 - psPid
@@ -85,10 +88,21 @@ In disk.sh:
 - removeSpecialCharsFromFileName
 - sizeOfFolder
 
+In network.sh:
+- checkInternetConnection
+- checkWiFi
+- connectedToNetwork
+- getIPs
+
 In random.sh:
 - getRandom
 - getRandomInRange
 - getUUID
+
+In system.sh:
+- getMemInfoFromPID
+- getMemInfoFromString
+- getVMPeak
 
 In systemd.sh:
 - checkJournal

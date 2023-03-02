@@ -5,6 +5,7 @@
 # - chall
 # - cdll
 # - checkNetworkInterface
+# - checkReadableDirectory
 # - checkReadOnlyVariables
 # - cleanPath
 # - commandExists
@@ -14,7 +15,6 @@
 # - fatal
 # - filterCommand
 # - getCPUTemperature
-# - getIPs
 # - getOptionValue
 # - getPathDirs
 # - isInteractive
@@ -23,6 +23,9 @@
 # - logDRY
 # - logError
 # - logMsg
+# - nrOfDirs
+# - nrOfFiles
+# - nrOfFilesAndDirs
 # - psCommand
 # - psGrep
 # - psPid
@@ -203,6 +206,43 @@ function checkNetworkInterface {
     fi
 
     /sbin/ifconfig ${INTERFACE} | grep '\(errors\|dropped\|overruns\):[^0]'
+}
+
+# Usage: checkReadableDirectory <CALLING_FN> [<DIRECTORY>]
+# Checks if DIRECTORY is readable
+# First parameter is the calling function which is used in the error messages
+# If no directory is given the current directory is used
+# Needed:
+# - BASH functions
+#  - fatal
+function checkReadableDirectory {
+    if [[ $# -lt 1 ]] ; then
+        fatal "${FUNCNAME} needs at least the name of the calling function"
+        return
+    fi
+    declare -r CALLING_FN="${1}" ; shift
+    declare -r USAGE="USAGE: ${CALLING_FN} [DIRECTORY]"
+
+    declare    dir
+
+    if   [[ ${#} -eq 0 ]] ; then
+        dir=.
+    elif [[ ${#} -eq 1 ]] ; then
+        dir="${1}"
+    else
+        fatal "${USAGE}"
+        return
+    fi
+    if [[ ! -d $dir ]] ; then
+        # It is not a directory or not reachable (/root/bin)
+        fatal "${CALLING_FN}: ${dir} is not a (reachable) directory"
+        return
+    fi
+    if [[ ! -r $dir ]] ; then
+        fatal "${CALLING_FN}: ${dir} is not readable"
+        return
+    fi
+    echo ${dir}
 }
 
 # Usage: checkReadOnlyVariables <VARS_TO_CHECK>
@@ -412,29 +452,6 @@ function getCPUTemperature {
     acpi -t | awk '{ print $4 }'
 }
 
-# Usage: getIPs [--only-first]
-# Get the ip-addresses of your system. With --only-first, only the first address.
-# Needed
-# - BASH function
-#   - fatal
-function getIPs {
-    declare IDENTIFIER="inet addr:"
-    declare IP_REGEX='[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}'
-    declare PARAMETERS='--only-matching -E'
-
-    if [[ ${#} -ge 1 ]] && [[ ${1} == '--only-first' ]]; then
-        PARAMETERS="--max-count=1 ${PARAMETERS}"; shift
-    fi
-    if [[ ${#} -ne 0 ]] ; then
-        fatal "${FUNCNAME} [--only-first]"
-        return
-    fi
-
-    /sbin/ifconfig | \
-        grep ${PARAMETERS} "${IDENTIFIER}${IP_REGEX} " | \
-        cut -c $((${#IDENTIFIER} + 1))-
-}
-
 # Usage: getOptionValue <OPTION>
 # Get the value of option <OPTION>
 # Needed
@@ -598,6 +615,41 @@ function logMsg {
     fi
 
     logDRY ${PARAMS} "${@}"
+}
+
+# Usage: nrOfDirs [<DIRECTORY>]
+# Gives nr of directories in DIRECTORY, default current directory
+# If DIRECTORY is not a readable directory give an error
+# Needed:
+# - BASH functions
+#   - checkReadableDirectory
+function nrOfDirs {
+    dir=$(checkReadableDirectory ${FUNCNAME} "$@") || return
+    find "${dir}" -maxdepth 1 -type d | echo $(($(wc -l) - 1 ))
+}
+
+# Usage: nrOfFiles [<DIRECTORY>]
+# Gives nr of files in DIRECTORY, default current directory
+# If DIRECTORY is not a readable directory give an error
+# Needed:
+# - BASH functions
+#   - checkReadableDirectory
+function nrOfFiles {
+    dir=$(checkReadableDirectory ${FUNCNAME} "$@") || return
+    find "${dir}" -maxdepth 1 -type f | wc -l
+}
+
+# Usage: nrOfFilesAndDirs [<DIRECTORY>]
+# Gives nr of files and directories in DIRECTORY, default current directory
+# If DIRECTORY is not a readable directory give an error
+# Needed:
+# - BASH functions
+#   - checkReadableDirectory
+#   - nrOfDirs
+#   - nrofFiles
+function nrOfFilesAndDirs {
+    dir=$(checkReadableDirectory ${FUNCNAME} "$@") || return
+    echo $(($(nrOfFiles) + $(nrOfDirs)))
 }
 
 # Usage: psCommand <COMMAND>
@@ -883,7 +935,7 @@ function taggedMsg {
     IFS=$'\n'
     set -- ${message}
     while [[ ${#} -ge 1 ]]; do
-        printf "\t${1}\n"; shift
+        printf "\t${1}\n" >&2 ; shift
     done
     IFS=${DCBL_OLD_IFS}
 }
@@ -960,6 +1012,7 @@ includeDir=/usr/local/bash
 source ${includeDir}/disk.sh
 source ${includeDir}/network.sh
 source ${includeDir}/random.sh
+source ${includeDir}/system.sh
 source ${includeDir}/systemd.sh
 source ${includeDir}/time.sh
 includeFile --notNeeded ${includeDir}/BASHExtra.sh
