@@ -2,6 +2,8 @@
 # It uses functionality from this file
 # Functions
 # - getSeconds
+# - waitMinutes
+# - waitSeconds
 
 ################################################################################
 # Functions                                                                    #
