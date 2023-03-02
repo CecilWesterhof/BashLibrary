@@ -111,6 +111,8 @@ In systemd.sh:
 
 In time.sh:
 - getSeconds
+- waitMinutes
+- waitSeconds
 
 The bin directory contains:
 - clojure
