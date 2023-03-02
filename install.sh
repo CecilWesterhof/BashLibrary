@@ -21,6 +21,7 @@ declare -r LINK_FILES=(
     disk.sh
     network.sh
     random.sh
+    system.sh
     systemd.sh
     time.sh
 )
