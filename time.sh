@@ -8,6 +8,7 @@
 ################################################################################
 
 # Usage: getDuration <SECONDS>
+# Converts SECONDS into a TIME_STRING
 # Needed
 # - BASH functions
 #   - fatal
@@ -31,6 +32,7 @@ function getDuration {
 }
 
 # Usage: getSeconds <TIME_STRING>
+# Converts a TIME_STRING in number of seconds
 # Needed
 # - BASH functions
 #   - fatal
@@ -56,4 +58,51 @@ function getSeconds {
     done
     printf "${seconds}\n"
     return 0
+}
+
+# Usage: waitMinutes <INTERVAL>
+# Needed
+# Waits until minutes is a multiply of INTERVAL
+# 60 % INTERVAL should be 0
+# - BASH functions
+#   - fatal
+#   - waitSeconds
+function waitMinutes {
+    if [[ ${#} -ne 1 ]] ; then
+        fatal "${FUNCNAME} <INTERVAL>"
+        return
+    fi
+
+    declare -r INTERVAL=${1}; shift
+
+    if [[ $((60 % ${INTERVAL})) -ne 0 ]] ; then
+        fatal "${FUNCNAME}: 60 is not a multiply of ${INTERVAL}"
+        return
+    fi
+
+    waitSeconds $((${INTERVAL} * 60))
+}
+
+
+# Usage: waitSeconds <INTERVAL>
+# Waits until seconds is a multiply of INTERVAL
+# 3600 % INTERVAL should be 0
+# Needed
+# - BASH functions
+#   - fatal
+#   - getSeconds
+function waitSeconds {
+    if [[ ${#} -ne 1 ]] ; then
+        fatal "${FUNCNAME} <INTERVAL>"
+        return
+    fi
+
+    declare -r INTERVAL=${1}; shift
+
+    if [[ $((3600 % ${INTERVAL})) -ne 0 ]] ; then
+        fatal "${FUNCNAME}: 3600 is not a multiply of ${INTERVAL}"
+        return
+    fi
+
+    sleep $(( ${INTERVAL} - ($(getSeconds $(date +%T)) % ${INTERVAL})))
 }
