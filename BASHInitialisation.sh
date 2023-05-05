@@ -4,6 +4,7 @@
 # - canRun
 # - chall
 # - cdll
+# - checkInteger
 # - checkNetworkInterface
 # - checkReadableDirectory
 # - checkReadOnlyVariables
@@ -17,6 +18,7 @@
 # - getCPUTemperature
 # - getOptionValue
 # - getPathDirs
+# - isInteger
 # - isInteractive
 # - isVarSet
 # - loadXmodmapExtra
@@ -38,8 +40,10 @@
 # - stackTrace
 # - stripLeadingZeros
 # - taggedMsg
+# - taggedMsgAndStackTrace
 # - valueInArray
 # - variableExist
+# - warning
 
 # Variables:
 # - STACK_TRACE_DEPTH
@@ -187,6 +191,23 @@ function cdll {
     ls -l
 }
 
+# Usage: checkInteger  <VALUE_TO_CHECK>
+# A fatal error when parameter is NOT an integer
+# Needed:
+# - BASH functions
+#  - fatal
+#  - isInteger
+function checkInteger {
+    if [[ ${#} -ne 1 ]] ; then
+        fatal "${FUNCNAME} <VALUE_TO_CHECK>"
+        return
+    fi
+    if ! isInteger ${1} ; then
+        fatal "'${1}' is not an integer"
+        return
+    fi
+}
+
 # Usage: checkNetworkInterface [<INTERFACE>]
 # Shows if errors, dropped or overruns of the specified interface
 # are unequal zero
@@ -233,12 +254,12 @@ function checkReadableDirectory {
         fatal "${USAGE}"
         return
     fi
-    if [[ ! -d $dir ]] ; then
+    if [[ ! -d ${dir} ]] ; then
         # It is not a directory or not reachable (/root/bin)
         fatal "${CALLING_FN}: ${dir} is not a (reachable) directory"
         return
     fi
-    if [[ ! -r $dir ]] ; then
+    if [[ ! -r ${dir} ]] ; then
         fatal "${CALLING_FN}: ${dir} is not readable"
         return
     fi
@@ -389,8 +410,7 @@ function elementInList {
 #   - stackTrace
 #   - taggedMsg
 function fatal {
-    taggedMsg "FATAL" "$@"
-    stackTrace 1
+    taggedMsgAndStackTrace "FATAL" "$@"
     case ${-} in
         *i*) # interactive shell
             return 1
@@ -506,6 +526,19 @@ function getRSSAndSwap {
     grep --extended-regexp 'VmRSS|VmSwap' "/proc/${1}/status"
 }
 
+
+# Usage: isInteger  <VALUE_TO_CHECK>
+# Returns if parameter is an integer
+# Needed:
+# - BASH functions
+#  - fatal
+function isInteger {
+    if [[ ${#} -ne 1 ]] ; then
+        fatal "${FUNCNAME} <VALUE_TO_CHECK>"
+        return
+    fi
+    [[ "$1" =~ ^[[:digit:]]+$ ]]
+}
 
 # Usage: isInteractive
 # Interactive shell or not?
@@ -649,7 +682,7 @@ function nrOfFiles {
 #   - nrofFiles
 function nrOfFilesAndDirs {
     dir=$(checkReadableDirectory ${FUNCNAME} "$@") || return
-    echo $(($(nrOfFiles) + $(nrOfDirs)))
+    echo $(($(nrOfFiles ${dir}) + $(nrOfDirs ${dir})))
 }
 
 # Usage: psCommand <COMMAND>
@@ -850,12 +883,14 @@ function stackTrace {
     declare    callAr
     declare -i depth
     declare    fileName
-    declare    fnName="()"
+    declare    fnName
     declare    lineNo
 
     case ${-} in
-        *i*) # interactive shell: no stackTrace
-            return
+        *i*) # interactive shell: check for stackTrace
+            if [[ ${INTERACTIVE_STACK_TRACE} != yes ]] ; then
+                return
+            fi
             ;;
         *) # non-interactive shell
             ;;
@@ -865,12 +900,12 @@ function stackTrace {
     else
         depth=0
     fi
-    while [[ ${fnName} != "main" && ${depth} -le ${STACK_TRACE_DEPTH} ]]; do
+    while [[ ${depth} -le ${STACK_TRACE_DEPTH} ]]; do
         callAr=($(caller ${depth}))
         lineNo=${callAr[0]}
         fnName=${callAr[1]-noFunction}
         fileName=${callAr[2]-noFile}
-        if [[ ${fnName} == "" ]]; then
+        if [[ ${fnName} == "noFunction" ]]; then
             break;
         fi
         printf "called from: ${fileName}:${lineNo} in ${fnName}\n" >&2
@@ -909,7 +944,9 @@ function stripLeadingZeros {
 # Used to give a debug message.
 # With no parameters it just shows an untagged message.
 # You can give a tag to define the type of message and a message to show.
-# It shows the filename with linenummer and function name from which it is called.
+# It shows the filename with linenummer and function name from which its
+# calling function is called.
+# function with error → fatal/warning → taggedMsgAndStackTrace -> taggedMsg
 # Not very useful interactive.
 # Needed: nothing
 function taggedMsg {
@@ -927,8 +964,9 @@ function taggedMsg {
         TAG=${1}; shift
     fi
     message="${@}"
-    callAr=($(caller 1))
-    lineNo=${callAr[0]}
+    callAr=($(caller 2))
+    echo ${callAr[*]}
+    lineNo=${callAr[0]-noLine}
     fnName=${callAr[1]-noFunction}
     fileName=${callAr[2]-noFile}
     printf "${TAG}: ${fileName}:${lineNo} in ${fnName}\n" >&2
@@ -938,6 +976,15 @@ function taggedMsg {
         printf "\t${1}\n" >&2 ; shift
     done
     IFS=${DCBL_OLD_IFS}
+}
+
+function taggedMsgAndStackTrace {
+    local tag=''
+    if [[ ${#} -ge 1 ]] ; then
+        tag=${1} ; shift
+    fi
+    taggedMsg "${tag}" "$@"
+    stackTrace 3
 }
 
 # Usage: valueInArray <value> <array-values>
@@ -1005,6 +1052,16 @@ function variableExist {
   return 1
 }
 
+# Usage: warning [<tag> [<message]]
+# Used to give a warning. Gives a tagged message and stacktrace.
+# Needed:
+# - BASH functions:
+#   - stackTrace
+#   - taggedMsg
+function warning {
+    taggedMsgAndStackTrace "WARNING" "$@"
+}
+
 ################################################################################
 # Includes                                                                     #
 ################################################################################
@@ -1036,6 +1093,12 @@ if  ! isVarSet STACK_TRACE_DEPTH  ; then
 
     STACK_TRACE_DEPTH=10
     export STACK_TRACE_DEPTH
+fi
+if  ! isVarSet INTERACTIVE_STACK_TRACE  ; then
+    declare INTERACTIVE_STACK_TRACE
+
+    INTERACTIVE_STACK_TRACE=no
+    export INTERACTIVE_STACK_TRACE
 fi
 
 # do things for interactive shell

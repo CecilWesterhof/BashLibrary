@@ -32,6 +32,7 @@ In BASHInitialisation.sh:
 - canRun
 - chall
 - cdll
+- checkInteger
 - checkNetworkInterface
 - checkReadableDirectory
 - checkReadOnlyVariables
@@ -45,6 +46,7 @@ In BASHInitialisation.sh:
 - getCPUTemperature
 - getOptionValue
 - getPathDirs
+- isInteger
 - isInteractive
 - isVarSet
 - loadXmodmapExtra
@@ -66,8 +68,10 @@ In BASHInitialisation.sh:
 - stackTrace
 - stripLeadingZeros
 - taggedMsg
+- taggedMsgAndStackTrace
 - valueInArray
 - variableExist
+- warning
 In interactive mode also:
 - +=
 - -=
